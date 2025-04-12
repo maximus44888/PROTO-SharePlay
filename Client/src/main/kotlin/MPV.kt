@@ -29,8 +29,10 @@ fun main() {
             """.trimIndent()
 
             fileChannel.write(getPlaybackTimeCommand)
+            println("Sent command: $getPlaybackTimeCommand")
 
             val getPlaybackTimeResponse = fileChannel.read()
+            println("Received response: $getPlaybackTimeResponse")
 
             val setVolumeCommand = """
                 {
