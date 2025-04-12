@@ -1,5 +1,7 @@
 package tfg.proto.shareplay
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.lang.Thread.sleep
@@ -7,11 +9,12 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 
+const val mpv = "mpv"
 const val PIPE_PATH = "\\\\.\\pipe\\shareplay\\mpv"
 const val MEDIA_PATH = "C:\\Users\\jmaxi\\Mis ficheros\\Anime\\86 S01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\\86 S01P01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\\S01E01-Undertaker [2F703024].mkv"
 
 fun main() {
-    val mpvProcess = ProcessBuilder("mpv", "--input-ipc-server=$PIPE_PATH", MEDIA_PATH)
+    val mpvProcess = ProcessBuilder(mpv, "--input-ipc-server=$PIPE_PATH", MEDIA_PATH)
         .redirectErrorStream(true)
         .start()
 
@@ -21,35 +24,33 @@ fun main() {
         while (true) {
             readln()
 
-            val getPlaybackTimeCommand = """
-                {
-                    "command" :["get_property","playback-time"],
-                    "request_id":1
-                }
-            """.trimIndent()
 
-            fileChannel.write(getPlaybackTimeCommand)
-            println("Sent command: $getPlaybackTimeCommand")
+            val getPlaybackTimeCommand = MpvCommand(listOf("get_property", "playback-time"), 1)
+            val getPlaybackTimeCommandJson = Json.encodeToString(getPlaybackTimeCommand) + "\n"
+
+            fileChannel.write(getPlaybackTimeCommandJson)
+            println("Sent command: $getPlaybackTimeCommandJson")
 
             val getPlaybackTimeResponse = fileChannel.read()
             println("Received response: $getPlaybackTimeResponse")
 
-            val setVolumeCommand = """
-                {
-                    "command" :["set_property","volume",50],
-                    "request_id":2
-                }
-            """.trimIndent()
-            fileChannel.write(setVolumeCommand)
-            println("Sent command: $setVolumeCommand")
+
+            val setVolumeCommand = MpvCommand(listOf("set_property", "volume", "50"), 2)
+            val setVolumeCommandJson = Json.encodeToString(setVolumeCommand) + "\n"
+            fileChannel.write(setVolumeCommandJson)
+            println("Sent command: $setVolumeCommandJson")
 
             val setVolumeResponse = fileChannel.read()
             println("Received response: $setVolumeResponse")
+
         }
         mpvProcess.waitFor()
     }
 
 }
+
+@Serializable
+data class MpvCommand(val command: List<String>, val request_id: Int)
 
 fun FileChannel.write(message: String) {
     val buffer = ByteBuffer.wrap((message + "\n").toByteArray(StandardCharsets.UTF_8))
