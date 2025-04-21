@@ -12,12 +12,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -27,11 +28,13 @@ fun main() {
     mpv.start()
 }
 
-fun FileChannel.write(message: String) {
-    val buffer = ByteBuffer.wrap((message + "\n").toByteArray(StandardCharsets.UTF_8))
+fun FileChannel.write(command: MPV.Command) {
+    val jsonCommand = command.encodeToJsonString()
+    val buffer = ByteBuffer.wrap((jsonCommand + "\n").toByteArray(StandardCharsets.UTF_8))
     while (buffer.hasRemaining()) {
         write(buffer)
     }
+    println("Sent command: $jsonCommand")
 }
 
 fun FileChannel.read(): String {
@@ -79,7 +82,7 @@ class MPV {
 
     @Serializable
     data class Command(
-        private val command: List<String>,
+        private val command: List<JsonElement>,
         @SerialName("request_id") private val requestId: Int? = null
     ) {
         fun encodeToJsonString() = Json.encodeToString(this)
@@ -109,14 +112,23 @@ class MPV {
     fun start() {
         val listOfCommands = listOf(
             listOf(
-                "set_property",
-                "volume",
-                0.toString()
+                JsonPrimitive("loadfile"),
+                JsonPrimitive("""C:\Users\jmaxi\Mis ficheros\Anime\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\Pop.Team.Epic.S01E02.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv""")
             ),
             listOf(
-                "loadfile",
-                """C:\Users\jmaxi\Mis ficheros\Anime\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\Pop.Team.Epic.S01E02.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv"""
+                JsonPrimitive("set_property"),
+                JsonPrimitive("volume"),
+                JsonPrimitive(0)
             ),
+            listOf(
+                JsonPrimitive("set_property"),
+                JsonPrimitive("pause"),
+                JsonPrimitive(true)
+            ),
+            listOf(
+                JsonPrimitive("seek"),
+                JsonPrimitive(500)
+            )
         )
         val commands = listOfCommands.mapIndexed { index, command ->
             Command(
@@ -128,23 +140,21 @@ class MPV {
         runBlocking {
             val rawResponses = rawResponsesProducer()
 
-            launch {
-                commands.forEach { command ->
-                    val jsonCommand = command.encodeToJsonString()
-                    println("Sent command: $jsonCommand")
-                    pipe.write(jsonCommand)
-                }
+            commands.forEach { command ->
+                print("Press Enter to send next command...")
+                readln()
+                pipe.write(command)
             }
 
             for (rawResponse in rawResponses) {
                 if (rawResponse.isEmpty()) continue
-                println("Received response: $rawResponse")
+                withContext(Dispatchers.IO) { println("Received response: $rawResponse") }
             }
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun CoroutineScope.rawResponsesProducer() = produce {
-        while (isActive) withContext(Dispatchers.IO) { pipe.read() }.split('\n').forEach { send(it) }
+        while (isActive) pipe.read().split('\n').forEach { send(it) }
     }
 }
