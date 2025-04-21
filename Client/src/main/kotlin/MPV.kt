@@ -14,11 +14,6 @@ import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -28,8 +23,8 @@ fun main() {
     mpv.start()
 }
 
-fun FileChannel.write(command: MPV.Command) {
-    val jsonCommand = command.encodeToJsonString()
+fun FileChannel.write(request: IPC.Request) {
+    val jsonCommand = request.toJsonString()
     val buffer = ByteBuffer.wrap((jsonCommand + "\n").toByteArray(StandardCharsets.UTF_8))
     while (buffer.hasRemaining()) {
         write(buffer)
@@ -80,62 +75,17 @@ class MPV {
         this.pipe = RandomAccessFile(pipeFile, "rw").channel
     }
 
-    @Serializable
-    data class Command(
-        private val command: List<JsonElement>,
-        @SerialName("request_id") private val requestId: Int? = null
-    ) {
-        fun encodeToJsonString() = Json.encodeToString(this)
-    }
-
-    @Serializable
-    data class Response(
-        private val error: String,
-        private val data: String? = null,
-        private val async: Boolean? = null,
-        @SerialName("request_id") private val requestId: Int? = null
-    ) {
-        fun encodeToJsonString() = Json.encodeToString(this)
-    }
-
-    @Serializable
-    data class Event(
-        private val event: String,
-        private val data: String? = null,
-        private val id: Int? = null,
-        private val name: String? = null,
-        @SerialName("request_id") private val requestId: Int? = null
-    ) {
-        fun encodeToJsonString() = Json.encodeToString(this)
-    }
-
     fun start() {
-        val listOfCommands = listOf(
-            listOf(
-                JsonPrimitive("loadfile"),
-                JsonPrimitive("""C:\Users\jmaxi\Mis ficheros\Anime\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\Pop.Team.Epic.S01E02.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv""")
+        val commands = listOf(
+            IPC.ObserveProperty(42, IPC.Property.VOLUME, requestId = 0),
+            IPC.LoadFile(
+                "C:\\Users\\jmaxi\\Mis ficheros\\Anime\\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\\Pop.Team.Epic.S01E01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv",
+                requestId = 1
             ),
-            listOf(
-                JsonPrimitive("set_property"),
-                JsonPrimitive("volume"),
-                JsonPrimitive(0)
-            ),
-            listOf(
-                JsonPrimitive("set_property"),
-                JsonPrimitive("pause"),
-                JsonPrimitive(true)
-            ),
-            listOf(
-                JsonPrimitive("seek"),
-                JsonPrimitive(500)
-            )
+            IPC.SetProperty(IPC.Property.VOLUME, 0, requestId = 2),
+            IPC.SetProperty(IPC.Property.PAUSE, true, requestId = 3),
+            IPC.GetProperty(IPC.Property.PLAYBACK_TIME, requestId = 4),
         )
-        val commands = listOfCommands.mapIndexed { index, command ->
-            Command(
-                command = command,
-                requestId = index
-            )
-        }
 
         runBlocking {
             val rawResponses = rawResponsesProducer()
