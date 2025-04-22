@@ -1,118 +1,101 @@
 package tfg.proto.shareplay
 
-import kotlinx.coroutines.*
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
-import java.io.IOException
+import java.io.File
 import java.io.RandomAccessFile
 import java.lang.Thread.sleep
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 
-const val mpv = "D:\\mpv\\mpv.exe"
-const val PIPE_PATH = "\\\\.\\pipe\\shareplay\\mpv"
-const val MEDIA_PATH = "D:\\Downloads\\Berserk\\Berserk 01.mp4"
+var request_id = 100
+const val mpv = """mpv"""
+const val PIPE_PATH = """\\.\pipe\shareplay\mpv"""
+const val MEDIA_PATH =
+    """C:\Users\jmaxi\Mis ficheros\Anime\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\Pop.Team.Epic.S01E01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv"""
+
+const val ANSI_GREEN = "\u001B[32m"
+const val ANSI_ORANGE = "\u001B[33m"
+const val ANSI_BLUE = "\u001B[34m"
+const val ANSI_RESET = "\u001B[0m"
 
 fun main() {
-    val mpvProcess = ProcessBuilder(mpv, "--input-ipc-server=$PIPE_PATH", MEDIA_PATH)
-        .redirectErrorStream(true)
+    ProcessBuilder(mpv, "--input-ipc-server=$PIPE_PATH", MEDIA_PATH)
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
+        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
         .start()
 
-    sleep(2000)
+    val pipe = File(PIPE_PATH)
+    while (!pipe.exists()) sleep(10)
 
-    RandomAccessFile(PIPE_PATH, "rw").channel.use { fileChannel ->
+    val pipeChannel = RandomAccessFile(pipe, "rw").channel
 
-        val propertiesToObserve = listOf("volume", "pause", "playback-time")
-        propertiesToObserve.forEachIndexed { index, prop ->
+    runBlocking {
+        launch {
+            while (true) {
+                withContext(Dispatchers.IO) {
+                    pipeChannel.read()
+                }
+            }
+        }
+
+        listOf("volume", "pause").forEachIndexed { id, property ->
             val commandList = listOf(
                 JsonPrimitive("observe_property"),
-                JsonPrimitive(index + 1),
-                JsonPrimitive(prop)
+                JsonPrimitive(id),
+                JsonPrimitive(property)
             )
-            val cmd = MpvCommand(command = JsonArray(commandList), request_id = 100 + index)
-            val jsonCmd = Json.encodeToString(MpvCommand.serializer(), cmd)
-            fileChannel.write(jsonCmd)
+            val cmd = MpvCommand(command = JsonArray(commandList), request_id = request_id++)
+            pipeChannel.write(cmd)
         }
 
-        runBlocking {
-            launch {
-                while (true) {
-                    val input = withContext(Dispatchers.IO) {
-                        readln()
-                    }
+        launch {
+            while (true) {
+                val input = withContext(Dispatchers.IO) {
+                    readln()
+                }
 
-                    val commandList = when {
-                        input.equals("pause", ignoreCase = true) ->
-                            listOf(
-                                JsonPrimitive("set_property"),
-                                JsonPrimitive("pause"),
-                                JsonPrimitive(true)
-                            )
-                        input.equals("resume", ignoreCase = true) ->
-                            listOf(
-                                JsonPrimitive("set_property"),
-                                JsonPrimitive("pause"),
-                                JsonPrimitive(false)
-                            )
-                        input.startsWith("seek") -> {
-                            val time = input.removePrefix("seek").trim().toDoubleOrNull()
-                            if (time != null) {
-                                listOf(
-                                    JsonPrimitive("set_property"),
-                                    JsonPrimitive("playback-time"),
-                                    JsonPrimitive(time)
-                                )
-                            } else {
-                                println("Format incorrect. Used: seek 23.5 for example")
-                                return@launch
-                            }
-                        }
-                        else -> {
-                            println("Comand not found. Used: pause, resume, seek <time>")
-                            return@launch
-                        }
-                    }
-
-                    val jsonCmd = Json.encodeToString(
-                        MpvCommand.serializer(),
-                        MpvCommand(
-                            command = JsonArray(commandList),
-                            request_id = (1000..2000).random()
-                        )
+                val commandList = when {
+                    input == "pause" -> listOf(
+                        JsonPrimitive("set_property"),
+                        JsonPrimitive("pause"),
+                        JsonPrimitive(true)
                     )
-                    println(fileChannel.lock())
-                    fileChannel.write(jsonCmd)
-                    println("Comand sent: $input")
-                }
-            }
 
-            launch {
-                while (true) {
-                    val response = withContext(Dispatchers.IO) {
-                        fileChannel.read()
-                    }
-                    if (response.isNotBlank()) {
-                        try {
-                            val json = Json.parseToJsonElement(response)
-                            val obj = json.jsonObject
-                            if (obj["event"]?.jsonPrimitive?.content == "property-change") {
-                                val name = obj["name"]?.jsonPrimitive?.content
-                                val data = obj["data"]
-                                println("Change in '$name': $data")
-                            } else {
-                                println("Other message: $response")
-                            }
-                        } catch (e: Exception) {
-                            println("Error JSON: $response")
-                        }
+                    input == "resume" -> listOf(
+                        JsonPrimitive("set_property"),
+                        JsonPrimitive("pause"),
+                        JsonPrimitive(false)
+                    )
+
+                    input.startsWith("seek ") -> listOf(
+                        JsonPrimitive("set_property"),
+                        JsonPrimitive("time-pos"),
+                        JsonPrimitive(input.removePrefix("seek ").trim().toDouble())
+                    )
+
+                    else -> {
+                        println("Couldn't build command. Use: pause, resume, seek <time>")
+                        continue
                     }
                 }
+
+                val cmd = MpvCommand(
+                    command = JsonArray(commandList),
+                    request_id = request_id++
+                )
+                println("${ANSI_BLUE}Built command: $cmd$ANSI_RESET")
+                withContext(Dispatchers.IO) { pipeChannel.write(cmd) }
             }
         }
-
-        mpvProcess.waitFor()
     }
 }
 
@@ -122,28 +105,22 @@ data class MpvCommand(
     val request_id: Int
 )
 
-fun FileChannel.write(message: String) {
-    val buffer = ByteBuffer.wrap((message + "\n").toByteArray(StandardCharsets.UTF_8))
-    while (buffer.hasRemaining()) {
-        write(buffer)
-    }
+fun FileChannel.write(command: MpvCommand) {
+    val json = Json.encodeToString(command)
+    val buffer = ByteBuffer.wrap((json + if (json.endsWith('\n')) "" else '\n').toByteArray(StandardCharsets.UTF_8))
+    write(buffer)
+    println("$ANSI_GREEN→ $json$ANSI_RESET")
 }
 
-fun FileChannel.read(): String {
-    val buffer = ByteBuffer.allocate(4096)
-    val stringBuilder = StringBuilder()
+fun FileChannel.read(): List<String>? {
+    val buffer = ByteBuffer.allocate(1024)
 
-    try {
-        val bytesRead = read(buffer)
-        if (bytesRead > 0) {
-            buffer.flip()
-            val bytes = ByteArray(bytesRead)
-            buffer.get(bytes)
-            stringBuilder.append(String(bytes, StandardCharsets.UTF_8))
-        }
-    } catch (e: IOException) {
-        println("Error reading from channel: ${e.message}")
-    }
+    val bytesRead = read(buffer)
+    if (bytesRead <= 0) return null
+    buffer.flip()
 
-    return stringBuilder.toString()
+    val messages = String(buffer.array(), 0, bytesRead, StandardCharsets.UTF_8).split('\n').filter { it.isNotBlank() }
+    messages.forEach { println("$ANSI_ORANGE← $it$ANSI_RESET") }
+
+    return messages
 }
