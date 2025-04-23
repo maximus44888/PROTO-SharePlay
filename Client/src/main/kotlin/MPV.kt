@@ -77,14 +77,15 @@ class MPV {
 
     fun start() {
         val commands = listOf(
-            IPC.ObserveProperty(42, IPC.Property.VOLUME, requestId = 0),
             IPC.LoadFile(
-                "C:\\Users\\jmaxi\\Mis ficheros\\Anime\\Pop.Team.Epic.S01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman\\Pop.Team.Epic.S01E01.1080p.BluRay.DUAL.Opus5.1.H.264-DemiHuman.mkv",
-                requestId = 1
+                """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv""",
+                requestId = 0
             ),
-            IPC.SetProperty(IPC.Property.VOLUME, 0, requestId = 2),
-            IPC.SetProperty(IPC.Property.PAUSE, true, requestId = 3),
-            IPC.GetProperty(IPC.Property.PLAYBACK_TIME, requestId = 4),
+            IPC.SetProperty(IPC.Property.PLAYBACK_TIME, 100, requestId = 1),
+            IPC.ObserveProperty(42, IPC.Property.VOLUME, requestId = 2),
+            IPC.SetProperty(IPC.Property.VOLUME, 0, requestId = 3),
+            IPC.SetProperty(IPC.Property.PAUSE, true, requestId = 4),
+            IPC.GetProperty(IPC.Property.PLAYBACK_TIME, requestId = 5),
         )
 
         runBlocking {
