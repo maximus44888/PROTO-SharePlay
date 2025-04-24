@@ -42,43 +42,43 @@ object IPC {
             requestId?.let { put("request_id", it) }
             async?.let { put("async", it) }
         }.toString()
+
+        data class GetProperty(
+            internal val property: Property,
+            override val requestId: Int? = null,
+            override val async: Boolean? = null,
+        ) : Request(
+            command = Command.GET_PROPERTY,
+            parameters = listOf(property),
+        )
+
+        data class SetProperty(
+            internal val property: Property,
+            internal val value: Any,
+            override val requestId: Int? = null,
+            override val async: Boolean? = null,
+        ) : Request(
+            command = Command.SET_PROPERTY,
+            parameters = listOf(property, value),
+        )
+
+        data class ObserveProperty(
+            internal val id: Int,
+            internal val property: Property,
+            override val requestId: Int? = null,
+            override val async: Boolean? = null,
+        ) : Request(
+            command = Command.OBSERVE_PROPERTY,
+            parameters = listOf(id, property),
+        )
+
+        data class LoadFile(
+            internal val filePath: String,
+            override val requestId: Int? = null,
+            override val async: Boolean? = null,
+        ) : Request(
+            command = Command.LOAD_FILE,
+            parameters = listOf(filePath),
+        )
     }
-
-    data class GetProperty(
-        internal val property: Property,
-        override val requestId: Int? = null,
-        override val async: Boolean? = null,
-    ) : Request(
-        command = Command.GET_PROPERTY,
-        parameters = listOf(property),
-    )
-
-    data class SetProperty(
-        internal val property: Property,
-        internal val value: Any,
-        override val requestId: Int? = null,
-        override val async: Boolean? = null,
-    ) : Request(
-        command = Command.SET_PROPERTY,
-        parameters = listOf(property, value),
-    )
-
-    data class ObserveProperty(
-        internal val id: Int,
-        internal val property: Property,
-        override val requestId: Int? = null,
-        override val async: Boolean? = null,
-    ) : Request(
-        command = Command.OBSERVE_PROPERTY,
-        parameters = listOf(id, property),
-    )
-    
-    data class LoadFile(
-        internal val filePath: String,
-        override val requestId: Int? = null,
-        override val async: Boolean? = null,
-    ) : Request(
-        command = Command.LOAD_FILE,
-        parameters = listOf(filePath),
-    )
 }
