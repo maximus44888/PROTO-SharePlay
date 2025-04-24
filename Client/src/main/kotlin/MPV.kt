@@ -11,7 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.uuid.ExperimentalUuidApi
@@ -91,21 +91,30 @@ class MPV {
         runBlocking {
             val rawResponses = rawResponsesProducer()
 
-            commands.forEach { command ->
-                print("Press Enter to send next command...")
-                readln()
-                pipe.write(command)
+            val writer = launch {
+                commands.forEach { command ->
+                    print("Press Enter to send next command...")
+                    readln()
+                    pipe.write(command)
+                }
             }
 
-            for (rawResponse in rawResponses) {
-                if (rawResponse.isEmpty()) continue
-                withContext(Dispatchers.IO) { println("Received response: $rawResponse") }
+            val reader = launch {
+                for (rawResponse in rawResponses) {
+                    if (rawResponse.isEmpty()) continue
+                    withContext(Dispatchers.IO) { println("Received response: $rawResponse") }
+                }
             }
+
+            withContext(Dispatchers.IO) { process.waitFor() }
+            writer.cancel()
+            reader.cancel()
+            rawResponses.cancel()
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun CoroutineScope.rawResponsesProducer() = produce {
-        while (isActive) pipe.read().split('\n').forEach { send(it) }
+        while (true) pipe.read().split('\n').forEach { send(it) }
     }
 }
