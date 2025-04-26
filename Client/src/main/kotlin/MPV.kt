@@ -1,10 +1,12 @@
 package tfg.proto.shareplay
 
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.nio.channels.ReadableByteChannel
+import java.nio.channels.WritableByteChannel
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,32 +25,34 @@ fun main() {
     mpv.start()
 }
 
-fun FileChannel.write(request: IPC.Request) {
+fun WritableByteChannel.write(request: IPC.Request) {
     val jsonCommand = request.toJsonString()
     val buffer = ByteBuffer.wrap((jsonCommand + "\n").toByteArray(StandardCharsets.UTF_8))
     while (buffer.hasRemaining()) {
         write(buffer)
     }
-    println("Sent command: $jsonCommand")
 }
 
-fun FileChannel.read(): String {
-    val buffer = ByteBuffer.allocate(4096)
-    val stringBuilder = StringBuilder()
+fun ReadableByteChannel.readLine(): String? {
+    val baos = ByteArrayOutputStream()
+    val one = ByteBuffer.allocate(1)
+    var foundAny = false
 
-    try {
-        val bytesRead = read(buffer)
-        if (bytesRead > 0) {
-            buffer.flip()
-            val bytes = ByteArray(bytesRead)
-            buffer.get(bytes)
-            stringBuilder.append(String(bytes, StandardCharsets.UTF_8))
+    while (true) {
+        one.clear()
+        val bytesRead = read(one)
+        if (bytesRead < 0) {
+            // EOF
+            return if (foundAny) baos.toString(StandardCharsets.UTF_8) else null
         }
-    } catch (e: IOException) {
-        println("Error reading from channel: ${e.message}")
+        foundAny = true
+        one.flip()
+        val b = one.get()
+        baos.write(b.toInt())
+        if (b == '\n'.code.toByte()) break
     }
 
-    return stringBuilder.toString()
+    return baos.toString(StandardCharsets.UTF_8)
 }
 
 class MPV {
@@ -115,6 +119,10 @@ class MPV {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun CoroutineScope.rawResponsesProducer() = produce {
-        while (true) pipe.read().split('\n').forEach { send(it) }
+        while (true) {
+            val line = pipe.readLine()
+            if (line == null) break
+            if (line.isNotBlank()) send(line)
+        }
     }
 }
