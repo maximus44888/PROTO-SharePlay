@@ -48,8 +48,8 @@ fun ReadableByteChannel.readLine(): String? {
         foundAny = true
         one.flip()
         val b = one.get()
-        baos.write(b.toInt())
         if (b == '\n'.code.toByte()) break
+        baos.write(b.toInt())
     }
 
     return baos.toString(StandardCharsets.UTF_8)
