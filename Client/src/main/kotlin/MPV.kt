@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
 import java.nio.channels.ReadableByteChannel
 import java.nio.channels.WritableByteChannel
 import java.nio.charset.StandardCharsets
@@ -25,22 +24,22 @@ fun main() {
     mpv.start()
 }
 
-fun WritableByteChannel.write(request: IPC.Request) {
+suspend fun WritableByteChannel.write(request: IPC.Request) {
     val jsonCommand = request.toJsonString()
     val buffer = ByteBuffer.wrap((jsonCommand + "\n").toByteArray(StandardCharsets.UTF_8))
     while (buffer.hasRemaining()) {
-        write(buffer)
+        withContext(Dispatchers.IO) { write(buffer) }
     }
 }
 
-fun ReadableByteChannel.readLine(): String? {
+suspend fun ReadableByteChannel.readLine(): String? {
     val baos = ByteArrayOutputStream()
     val one = ByteBuffer.allocate(1)
     var foundAny = false
 
     while (true) {
         one.clear()
-        val bytesRead = read(one)
+        val bytesRead = withContext(Dispatchers.IO) { read(one) }
         if (bytesRead < 0) {
             // EOF
             return if (foundAny) baos.toString(StandardCharsets.UTF_8) else null
@@ -57,7 +56,8 @@ fun ReadableByteChannel.readLine(): String? {
 
 class MPV {
     private val process: Process
-    private val pipe: FileChannel
+    private val readPipe: ReadableByteChannel
+    private val writePipe: WritableByteChannel
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -76,7 +76,8 @@ class MPV {
         while (!pipeFile.exists()) {
         }
 
-        this.pipe = RandomAccessFile(pipeFile, "rw").channel
+        this.readPipe = RandomAccessFile(pipeFile, "r").channel
+        this.writePipe = RandomAccessFile(pipeFile, "rw").channel
     }
 
     fun start() {
@@ -95,18 +96,18 @@ class MPV {
         runBlocking {
             val rawResponses = rawResponsesProducer()
 
-            val writer = launch {
+            val writer = launch(Dispatchers.IO) {
                 commands.forEach { command ->
-                    print("Press Enter to send next command...")
+                    println("Press Enter to send $command...")
                     readln()
-                    pipe.write(command)
+                    writePipe.write(command)
                 }
             }
 
-            val reader = launch {
+            val reader = launch(Dispatchers.IO) {
                 for (rawResponse in rawResponses) {
                     if (rawResponse.isEmpty()) continue
-                    withContext(Dispatchers.IO) { println("Received response: $rawResponse") }
+                    println("Received response: $rawResponse")
                 }
             }
 
@@ -120,7 +121,7 @@ class MPV {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun CoroutineScope.rawResponsesProducer() = produce {
         while (true) {
-            val line = pipe.readLine()
+            val line = readPipe.readLine()
             if (line == null) break
             if (line.isNotBlank()) send(line)
         }
