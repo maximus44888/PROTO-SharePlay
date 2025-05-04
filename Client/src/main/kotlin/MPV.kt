@@ -47,7 +47,7 @@ class MPV {
     }
 
     fun start() = runBlocking {
-        val requestWriter = launch(Dispatchers.IO) {
+        launch(Dispatchers.IO) {
             val requests = listOf(
                 IPC.Request.LoadFile(
                     """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
@@ -63,16 +63,18 @@ class MPV {
                 print("Press Enter to send request ${request.toJsonString()}:")
                 readln()
 
-                writer.println(request.toJsonString())
+                writer.writeRequest(request)
                 println("Request sent: ${request.toJsonString()}")
             }
         }
 
-        val responseReader = launch(Dispatchers.IO) {
+        launch(Dispatchers.IO) {
             while (true) {
                 val line = reader.readLine()
                 println("Response received: $line")
             }
         }
     }
+
+    fun PrintWriter.writeRequest(request: IPC.Request) = println(request.toJsonString())
 }
