@@ -1,9 +1,15 @@
 package tfg.proto.shareplay
 
+import java.io.BufferedReader
 import java.io.File
-import java.io.RandomAccessFile
-import java.nio.channels.ReadableByteChannel
-import java.nio.channels.WritableByteChannel
+import java.io.PrintWriter
+import java.lang.Thread.sleep
+import java.net.Socket
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -15,8 +21,8 @@ fun main() {
 
 class MPV {
     private val process: Process
-    private val readPipe: ReadableByteChannel
-    private val writePipe: WritableByteChannel
+    private val writer: PrintWriter
+    private val reader: BufferedReader
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -32,30 +38,41 @@ class MPV {
             .start()
 
         val pipeFile = File(pipePath)
-        while (!pipeFile.exists()) {
-        }
+        while (!pipeFile.exists()) sleep(10)
 
-        val pipe = RandomAccessFile(pipeFile, "rw").channel
+        val pipeSocket: Socket = Win32NamedPipeSocket(pipePath)
 
-        this.writePipe = pipe
-        this.readPipe = pipe
+        writer = PrintWriter(pipeSocket.outputStream, true)
+        reader = pipeSocket.inputStream.bufferedReader()
     }
 
-    fun start() {
-        val requests = listOf(
-            IPC.Request.LoadFile(
-                """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
-            ),
-            IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, 100),
-            IPC.Request.ObserveProperty(42, IPC.Property.VOLUME),
-            IPC.Request.SetProperty(IPC.Property.VOLUME, 0),
-            IPC.Request.SetProperty(IPC.Property.PAUSE, true),
-            IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME),
-        )
+    fun start() = runBlocking {
+        val requestWriter = launch(Dispatchers.IO) {
+            val requests = listOf(
+                IPC.Request.LoadFile(
+                    """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
+                ),
+                IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, 100),
+                IPC.Request.ObserveProperty(42, IPC.Property.VOLUME),
+                IPC.Request.SetProperty(IPC.Property.VOLUME, 0),
+                IPC.Request.SetProperty(IPC.Property.PAUSE, true),
+                IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME),
+            )
 
-        requests.forEach {
-            readln()
-            println(it.toJsonString())
+            requests.forEach { request ->
+                print("Press Enter to send request ${request.toJsonString()}:")
+                readln()
+
+                writer.println(request.toJsonString())
+                println("Request sent: ${request.toJsonString()}")
+            }
+        }
+
+        val responseReader = launch(Dispatchers.IO) {
+            while (true) {
+                val line = reader.readLine()
+                println("Response received: $line")
+            }
         }
     }
 }
