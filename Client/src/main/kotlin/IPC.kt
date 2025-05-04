@@ -23,9 +23,16 @@ object IPC {
     sealed class Request(
         internal val command: Command,
         internal val parameters: List<Any>,
-        internal open val requestId: Int? = null,
         internal open val async: Boolean? = null,
     ) {
+        internal companion object {
+            var requestId = 0
+                get() = field++
+                internal set(value) = Unit
+        }
+
+        val requestId = Companion.requestId
+
         @OptIn(ExperimentalSerializationApi::class)
         fun toJsonString() = buildJsonObject {
             putJsonArray("command") {
@@ -39,13 +46,12 @@ object IPC {
                     }
                 }
             }
-            requestId?.let { put("request_id", it) }
+            put("request_id", requestId)
             async?.let { put("async", it) }
         }.toString()
 
         data class GetProperty(
             internal val property: Property,
-            override val requestId: Int? = null,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.GET_PROPERTY,
@@ -55,7 +61,6 @@ object IPC {
         data class SetProperty(
             internal val property: Property,
             internal val value: Any,
-            override val requestId: Int? = null,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.SET_PROPERTY,
@@ -65,7 +70,6 @@ object IPC {
         data class ObserveProperty(
             internal val id: Int,
             internal val property: Property,
-            override val requestId: Int? = null,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.OBSERVE_PROPERTY,
@@ -74,7 +78,6 @@ object IPC {
 
         data class LoadFile(
             internal val filePath: String,
-            override val requestId: Int? = null,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.LOAD_FILE,
