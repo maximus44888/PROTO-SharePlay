@@ -9,6 +9,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -70,11 +72,13 @@ class MPV {
 
         launch(Dispatchers.IO) {
             while (true) {
-                val line = reader.readLine()
-                println("Response received: $line")
+                val response = reader.readResponse()
+                println("Response received: $response")
             }
         }
     }
+
+    fun BufferedReader.readResponse() = Json.parseToJsonElement(readLine()).jsonObject
 
     fun PrintWriter.writeRequest(request: IPC.Request) = println(request.toJsonString())
 }
