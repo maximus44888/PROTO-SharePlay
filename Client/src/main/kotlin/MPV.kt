@@ -5,11 +5,18 @@ import java.io.File
 import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.net.Socket
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
@@ -48,37 +55,51 @@ class MPV {
         reader = pipeSocket.inputStream.bufferedReader()
     }
 
-    fun start() = runBlocking {
-        launch(Dispatchers.IO) {
-            val requests = listOf(
-                IPC.Request.LoadFile(
-                    """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
-                ),
-                IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, 100),
-                IPC.Request.ObserveProperty(42, IPC.Property.VOLUME),
-                IPC.Request.SetProperty(IPC.Property.VOLUME, 0),
-                IPC.Request.SetProperty(IPC.Property.PAUSE, true),
-                IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME),
-            )
+    fun start() = runBlocking<Unit> {
+        launch {
+            val requests = requestsProducer()
 
-            requests.forEach { request ->
-                print("Press Enter to send request ${request.toJsonString()}:")
-                readln()
-
-                writer.writeRequest(request)
-                println("Request sent: ${request.toJsonString()}")
+            requests.consumeEach {
+                writer.writeRequest(it)
+                withContext(Dispatchers.IO) { println("Request sent: ${it.toJsonString()}") }
+                delay(1500)
             }
         }
 
-        launch(Dispatchers.IO) {
-            while (true) {
-                val response = reader.readResponse()
-                println("Response received: $response")
+        launch {
+            val responses = responsesProducer()
+
+            responses.consumeEach {
+                withContext(Dispatchers.IO) { println("Received response: $it") }
             }
         }
     }
 
-    fun BufferedReader.readResponse() = Json.parseToJsonElement(readLine()).jsonObject
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun CoroutineScope.requestsProducer() = produce {
+        listOf(
+            IPC.Request.LoadFile(
+                """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
+            ),
+            IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, 100),
+            IPC.Request.ObserveProperty(42, IPC.Property.VOLUME),
+            IPC.Request.SetProperty(IPC.Property.VOLUME, 0),
+            IPC.Request.SetProperty(IPC.Property.PAUSE, true),
+            IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME),
+        ).forEach { send(it) }
+    }
 
-    fun PrintWriter.writeRequest(request: IPC.Request) = println(request.toJsonString())
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun CoroutineScope.responsesProducer() = produce {
+        while (true) send(reader.readResponse())
+    }
+
+    suspend fun BufferedReader.readResponse(): JsonObject {
+        val line = withContext(Dispatchers.IO) { readLine() }
+        return Json.parseToJsonElement(line).jsonObject
+    }
+
+    suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
+        println(request.toJsonString())
+    }
 }
