@@ -9,11 +9,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -22,10 +22,10 @@ import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-fun main() {
+suspend fun main() {
     val mpv = MPV()
 
-    mpv.start()
+    mpv.start().join()
 }
 
 class MPV {
@@ -55,7 +55,7 @@ class MPV {
         reader = pipeSocket.inputStream.bufferedReader()
     }
 
-    fun start() = runBlocking<Unit> {
+    fun start() = CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
         launch {
             val requests = requestsProducer()
 
