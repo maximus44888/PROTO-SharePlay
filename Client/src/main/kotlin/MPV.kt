@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
@@ -25,13 +26,15 @@ import kotlin.uuid.Uuid
 suspend fun main() {
     val mpv = MPV()
 
-    mpv.start().join()
+    mpv.join()
 }
 
 class MPV {
     private val process: Process
     private val writer: PrintWriter
     private val reader: BufferedReader
+
+    private val job: Job
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -53,9 +56,11 @@ class MPV {
 
         writer = PrintWriter(pipeSocket.outputStream, true)
         reader = pipeSocket.inputStream.bufferedReader()
+
+        job = start()
     }
 
-    fun start() = CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
+    private fun start() = CoroutineScope(Dispatchers.Default + SupervisorJob()).launch {
         launch {
             val requests = requestsProducer()
 
@@ -76,7 +81,7 @@ class MPV {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun CoroutineScope.requestsProducer() = produce {
+    private fun CoroutineScope.requestsProducer() = produce {
         listOf(
             IPC.Request.LoadFile(
                 """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
@@ -90,16 +95,20 @@ class MPV {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun CoroutineScope.responsesProducer() = produce {
+    private fun CoroutineScope.responsesProducer() = produce {
         while (true) send(reader.readResponse())
     }
 
-    suspend fun BufferedReader.readResponse(): JsonObject {
+    private suspend fun BufferedReader.readResponse(): JsonObject {
         val line = withContext(Dispatchers.IO) { readLine() }
         return Json.parseToJsonElement(line).jsonObject
     }
 
-    suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
+    private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
         println(request.toJsonString())
+    }
+
+    suspend fun join() {
+        job.join()
     }
 }
