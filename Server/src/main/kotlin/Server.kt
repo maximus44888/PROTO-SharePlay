@@ -49,16 +49,31 @@ fun CoroutineScope.newClientsProducer() = produce {
 class Room(private val name: String) {
     private val clients = ConcurrentLinkedQueue<Client>()
 
+    init {
+        log("Room created")
+    }
+
     suspend fun handleNewClient(client: Client) {
         clients.add(client)
 
+        log("New client $client added. Total room clients: ${clients.size}")
+
         while (true) {
             val number = client.readInt()
+
+            log(
+                "Client $client sent number: $number\n" +
+                        "Broadcasting to other clients in room..."
+            )
 
             clients.filterNot { it == client }.forEach {
                 it.sendInt(number)
             }
         }
+    }
+
+    fun log(message: String) {
+        println("[$name] $message")
     }
 
     class Client(
