@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 
 const val mediaPath =
     """C:\Users\jmaxi\Mis ficheros\Anime\86 S01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\86 S01P01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\S01E01-Undertaker [2F703024].mkv"""
+const val mpvPath = "mpv"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 suspend fun main() {
@@ -49,7 +50,7 @@ suspend fun main() {
                         }
                     }
 
-                    MPV(requests, this)
+                    MPV(mpvPath, requests, this)
                 }
             }
         }

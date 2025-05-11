@@ -12,8 +12,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -23,25 +21,8 @@ import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalCoroutinesApi::class)
-suspend fun main() = coroutineScope {
-    val requests = produce {
-        send(IPC.Request.LoadFile(
-            """C:\Users\jmaxi\Mis ficheros\Anime\[Trix] Porco Rosso (1992) (BD 1080p AV1) [E78BBC59].mkv"""
-        ))
-        delay(500)
-        while (true) {
-            send(IPC.Request.SetProperty(IPC.Property.VOLUME, 0))
-            delay(500)
-        }
-    }
-
-    val mpv = MPV(requests, this)
-
-    mpv.responses.consumeEach { println("Received response: $it") }
-}
-
 class MPV(
+    mpvPath: String,
     private val requests: ReceiveChannel<IPC.Request>,
     coroutineScope: CoroutineScope
 ) {
@@ -55,7 +36,7 @@ class MPV(
         val pipePath = """\\.\pipe\shareplay\mpv\${Uuid.random()}"""
 
         process = ProcessBuilder(
-            "mpv",
+            mpvPath,
             "--input-ipc-server=$pipePath",
             "--force-window",
             "--idle"
