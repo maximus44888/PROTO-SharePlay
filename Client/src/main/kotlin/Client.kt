@@ -32,10 +32,9 @@ suspend fun main() {
                             send(IPC.Request.SetProperty(IPC.Property.VOLUME, 0))
                             send(IPC.Request.SetProperty(IPC.Property.PAUSE, true))
 
-                            val randomPlaybackTime = (0..666).random()
-                            println("Random playback time: $randomPlaybackTime")
-
                             while (true) {
+                                val randomPlaybackTime = (0..1200).random()
+                                println("Random playback time: $randomPlaybackTime")
                                 withContext(Dispatchers.IO) { readln() }
                                 objectOutputStream.writeInt(randomPlaybackTime)
                                 send(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, randomPlaybackTime))
