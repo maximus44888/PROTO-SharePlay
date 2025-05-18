@@ -19,5 +19,13 @@ suspend fun main() {
                 println("Pause: $it")
             }
         }
+
+        launch(Dispatchers.IO) {
+            while (true) {
+                val input = readln().toInt()
+                if (input == 0) mpv.pause(false)
+                else if (input == 1) mpv.pause(true)
+            }
+        }
     }
 }
