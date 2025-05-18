@@ -5,37 +5,37 @@ import java.io.File
 import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.net.Socket
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class MPV(
-    mpvPath: String,
-    private val requests: ReceiveChannel<IPC.Request>,
-    coroutineScope: CoroutineScope
-) {
-    private val process: Process
+    private val mpvPath: String
+) : Player {
     private val writer: PrintWriter
     private val reader: BufferedReader
-    val responses: ReceiveChannel<JsonObject>
+    private val responses: ReceiveChannel<JsonObject>
+    private val completables = mutableMapOf<Int, CompletableDeferred<JsonObject>>()
 
     init {
         @OptIn(ExperimentalUuidApi::class)
         val pipePath = """\\.\pipe\shareplay\mpv\${Uuid.random()}"""
 
-        process = ProcessBuilder(
+        ProcessBuilder(
             mpvPath,
             "--input-ipc-server=$pipePath",
             "--force-window",
@@ -52,13 +52,13 @@ class MPV(
         writer = PrintWriter(pipeSocket.outputStream, true)
         reader = pipeSocket.inputStream.bufferedReader()
 
-        responses = coroutineScope.responsesProducer()
+        responses = CoroutineScope(Dispatchers.IO).responsesProducer()
 
-        coroutineScope.launch {
-            requests.consumeEach { request ->
-                writer.writeRequest(request)
-                withContext(Dispatchers.IO) {
-                    println("Sent request: ${request.toJsonString()}")
+        CoroutineScope(Dispatchers.IO).launch {
+            for (response in responses) {
+                response["request_id"]?.jsonPrimitive?.intOrNull.let { requestId -> 
+                    completables[requestId]?.complete(response)
+                    completables.remove(requestId)
                 }
             }
         }
@@ -76,5 +76,29 @@ class MPV(
 
     private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
         println(request.toJsonString())
+    }
+
+    override suspend fun loadFile(fileIdentifier: String) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun pause() {
+        val request = IPC.Request.SetProperty(IPC.Property.PAUSE, true)
+        completables[request.requestId] = CompletableDeferred()
+        writer.writeRequest(request)
+        
+        completables[request.requestId]?.await()
+    }
+
+    override suspend fun play() {
+        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, false))
+        
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun jumpTo(time: Int) {
+        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
+        
+        TODO("Not yet implemented")
     }
 }

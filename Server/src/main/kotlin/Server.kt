@@ -59,15 +59,15 @@ class Room(private val name: String) {
         log("New client $client added. Total room clients: ${clients.size}")
 
         while (true) {
-            val number = client.readInt()
+            val shouldPause = client.readBoolean()
 
             log(
-                "Client $client sent number: $number\n" +
+                "Client $client sent pause: $shouldPause\n" +
                         "Broadcasting to other clients in room..."
             )
 
             clients.filterNot { it == client }.forEach {
-                it.sendInt(number)
+                it.sendBoolean(shouldPause)
             }
         }
     }
@@ -86,9 +86,13 @@ class Room(private val name: String) {
 
         internal suspend fun readUTF() = withContext(Dispatchers.IO) { dataInputStream.readUTF() }
 
+        internal suspend fun readBoolean() = withContext(Dispatchers.IO) { dataInputStream.readBoolean() }
+
         internal fun sendInt(value: Int) = dataOutputStream.writeInt(value)
 
         internal fun sendUTF(message: String) = dataOutputStream.writeUTF(message)
+
+        internal fun sendBoolean(value: Boolean) = dataOutputStream.writeBoolean(value)
 
         override fun toString() = "${socket.inetAddress.hostAddress}:${socket.port}"
     }
