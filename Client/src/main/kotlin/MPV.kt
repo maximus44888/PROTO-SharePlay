@@ -89,12 +89,8 @@ class MPV(
         TODO("Not yet implemented")
     }
 
-    override suspend fun pause() {
-        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, true))
-    }
-
-    override suspend fun play() {
-        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, false))
+    override suspend fun pause(pause: Boolean) {
+        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, pause))
     }
 
     override suspend fun jumpTo(time: Int) {
