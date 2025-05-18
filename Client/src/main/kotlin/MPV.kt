@@ -10,12 +10,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -25,12 +27,13 @@ import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MPV(
-    private val mpvPath: String
+    mpvPath: String
 ) : Player {
     private val writer: PrintWriter
     private val reader: BufferedReader
     private val responses: ReceiveChannel<JsonObject>
-    private val completables = mutableMapOf<Int, CompletableDeferred<JsonObject>>()
+    private val requests = mutableMapOf<Int, CompletableDeferred<JsonObject>>()
+    private val observedProperties = mutableMapOf<Int, Channel<JsonObject>>()
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -59,21 +62,27 @@ class MPV(
 
         CoroutineScope(Dispatchers.IO).launch {
             for (response in responses) {
-                response["request_id"]?.jsonPrimitive?.intOrNull.let { requestId -> 
-                    completables[requestId]?.complete(response)
-                    completables.remove(requestId)
+                launch(Dispatchers.IO) {
+                    response["request_id"]?.jsonPrimitive?.intOrNull?.let { requestId ->
+                        requests[requestId]?.complete(response)
+                        requests.remove(requestId)
+                    }
+                    response["id"]?.jsonPrimitive?.intOrNull?.let { id ->
+                        observedProperties[id]?.send(response)
+                    }
+                    println(response)
                 }
-                println(response)
             }
         }
     }
 
-    private suspend fun BufferedReader.readResponse() = withContext(Dispatchers.IO) { Json.parseToJsonElement(readLine()).jsonObject }
+    private suspend fun BufferedReader.readResponse() =
+        withContext(Dispatchers.IO) { Json.parseToJsonElement(readLine()).jsonObject }
 
     private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
-        completables[request.requestId] = CompletableDeferred()
+        requests[request.requestId] = CompletableDeferred()
         println(request.toJsonString())
-        completables[request.requestId]?.await()
+        requests[request.requestId]?.await()
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
@@ -91,4 +100,29 @@ class MPV(
     override suspend fun jumpTo(time: Int) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
     }
+
+    override suspend fun observePause(): ReceiveChannel<Boolean> {
+        val request = IPC.Request.ObserveProperty(1, IPC.Property.PAUSE)
+        val channel = Channel<JsonObject>()
+        observedProperties[request.id] = channel
+        writer.writeRequest(request)
+
+        return channel.map { it?.get("data")?.jsonPrimitive?.booleanOrNull }.filterNotNull()
+    }
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T, R> ReceiveChannel<T?>.map(transform: (T?) -> R) =
+    CoroutineScope(Dispatchers.IO).produce {
+        for (item in this@map) {
+            send(transform(item))
+        }
+    }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T> ReceiveChannel<T?>.filterNotNull(): ReceiveChannel<T> =
+    CoroutineScope(Dispatchers.IO).produce {
+        for (item in this@filterNotNull) {
+            if (item != null) send(item)
+        }
+    }
