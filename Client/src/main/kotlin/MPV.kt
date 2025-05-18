@@ -23,6 +23,7 @@ import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class MPV(
     private val mpvPath: String
 ) : Player {
@@ -52,7 +53,9 @@ class MPV(
         writer = PrintWriter(pipeSocket.outputStream, true)
         reader = pipeSocket.inputStream.bufferedReader()
 
-        responses = CoroutineScope(Dispatchers.IO).responsesProducer()
+        responses = CoroutineScope(Dispatchers.IO).produce {
+            while (true) send(reader.readResponse())
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             for (response in responses) {
@@ -60,22 +63,17 @@ class MPV(
                     completables[requestId]?.complete(response)
                     completables.remove(requestId)
                 }
+                println(response)
             }
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun CoroutineScope.responsesProducer() = produce {
-        while (true) send(reader.readResponse())
-    }
-
-    private suspend fun BufferedReader.readResponse(): JsonObject {
-        val line = withContext(Dispatchers.IO) { readLine() }
-        return Json.parseToJsonElement(line).jsonObject
-    }
+    private suspend fun BufferedReader.readResponse() = withContext(Dispatchers.IO) { Json.parseToJsonElement(readLine()).jsonObject }
 
     private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
+        completables[request.requestId] = CompletableDeferred()
         println(request.toJsonString())
+        completables[request.requestId]?.await()
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
@@ -83,22 +81,14 @@ class MPV(
     }
 
     override suspend fun pause() {
-        val request = IPC.Request.SetProperty(IPC.Property.PAUSE, true)
-        completables[request.requestId] = CompletableDeferred()
-        writer.writeRequest(request)
-        
-        completables[request.requestId]?.await()
+        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, true))
     }
 
     override suspend fun play() {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, false))
-        
-        TODO("Not yet implemented")
     }
 
     override suspend fun jumpTo(time: Int) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
-        
-        TODO("Not yet implemented")
     }
 }
