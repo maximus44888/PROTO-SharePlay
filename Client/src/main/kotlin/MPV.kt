@@ -98,7 +98,7 @@ class MPV(
     }
 
     override suspend fun observePause(): ReceiveChannel<Boolean> {
-        val request = IPC.Request.ObserveProperty(1, IPC.Property.PAUSE)
+        val request = IPC.Request.ObserveProperty(IPC.Property.PAUSE)
         val channel = Channel<JsonObject>()
         observedProperties[request.id] = channel
         writer.writeRequest(request)

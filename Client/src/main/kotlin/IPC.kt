@@ -68,14 +68,22 @@ object IPC {
             parameters = listOf(property, value),
         )
 
-        data class ObserveProperty(
-            internal val id: Int,
-            internal val property: Property,
+        data class ObserveProperty private constructor(
+            val id: Int,
+            private val property: Property,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.OBSERVE_PROPERTY,
             parameters = listOf(id, property),
-        )
+        ) {
+            constructor(property: Property, async: Boolean? = null) : this(Companion.id, property, async)
+
+            internal companion object {
+                var id = 1
+                    get() = field++
+                    internal set(value) = Unit
+            }
+        }
 
         data class LoadFile(
             internal val filePath: String,
