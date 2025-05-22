@@ -86,7 +86,7 @@ class MPV(
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
-        TODO("Not yet implemented")
+        writer.writeRequest(IPC.Request.LoadFile(fileIdentifier))
     }
 
     override suspend fun pause(pause: Boolean) {

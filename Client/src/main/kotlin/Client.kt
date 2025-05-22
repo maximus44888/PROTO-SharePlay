@@ -13,6 +13,9 @@ const val mpvPath = "mpv"
 suspend fun main() {
     val mpv = MPV(mpvPath)
 
+    mpv.pause(true)
+    mpv.loadFile(mediaPath)
+
     coroutineScope {
         launch(Dispatchers.IO) {
             mpv.observePause().consumeEach {
