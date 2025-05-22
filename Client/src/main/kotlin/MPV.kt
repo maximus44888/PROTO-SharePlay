@@ -80,9 +80,10 @@ class MPV(
         withContext(Dispatchers.IO) { Json.parseToJsonElement(readLine()).jsonObject }
 
     private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
-        requests[request.requestId] = CompletableDeferred()
+        val completableDeferred = CompletableDeferred<JsonObject>()
+        requests[request.requestId] = completableDeferred
         println(request.toJsonString())
-        requests[request.requestId]?.await()
+        completableDeferred.await()
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
