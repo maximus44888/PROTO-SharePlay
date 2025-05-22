@@ -20,6 +20,7 @@ suspend fun main() {
         launch(Dispatchers.IO) {
             mpv.observePause().consumeEach {
                 println("New pause: $it")
+                println("New playback time: ${mpv.getPlaybackTime()}")
             }
         }
 
@@ -27,6 +28,7 @@ suspend fun main() {
             while (true) {
                 val input = readln().toInt()
                 println("Previous pause: ${mpv.getPause()}")
+                println("Previous playback time: ${mpv.getPlaybackTime()}")
                 if (input == 0) mpv.pause(false)
                 else if (input == 1) mpv.pause(true)
             }

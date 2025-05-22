@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -102,6 +103,12 @@ class MPV(
 
     override suspend fun jumpTo(time: Int) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
+    }
+
+    override suspend fun getPlaybackTime(): Double? {
+        val request = IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME)
+        val response = writer.writeRequest(request)
+        return response["data"]?.jsonPrimitive?.doubleOrNull
     }
 
     override suspend fun observePause(): ReceiveChannel<Boolean> {
