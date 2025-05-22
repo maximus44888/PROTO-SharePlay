@@ -7,6 +7,8 @@ interface Player {
 
     suspend fun pause(pause: Boolean)
 
+    suspend fun getPause(): Boolean?
+
     suspend fun jumpTo(time: Int)
 
     suspend fun observePause(): ReceiveChannel<Boolean>

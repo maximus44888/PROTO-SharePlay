@@ -19,13 +19,14 @@ suspend fun main() {
     coroutineScope {
         launch(Dispatchers.IO) {
             mpv.observePause().consumeEach {
-                println("Pause: $it")
+                println("New pause: $it")
             }
         }
 
         launch(Dispatchers.IO) {
             while (true) {
                 val input = readln().toInt()
+                println("Previous pause: ${mpv.getPause()}")
                 if (input == 0) mpv.pause(false)
                 else if (input == 1) mpv.pause(true)
             }

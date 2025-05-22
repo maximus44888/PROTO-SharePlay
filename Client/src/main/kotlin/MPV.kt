@@ -94,6 +94,12 @@ class MPV(
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, pause))
     }
 
+    override suspend fun getPause(): Boolean? {
+        val request = IPC.Request.GetProperty(IPC.Property.PAUSE)
+        val response = writer.writeRequest(request)
+        return response["data"]?.jsonPrimitive?.booleanOrNull
+    }
+
     override suspend fun jumpTo(time: Int) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
     }
