@@ -41,7 +41,7 @@ object IPC {
                 parameters.forEach { param ->
                     when (param) {
                         is String -> add(param)
-                        is Int -> add(param)
+                        is Number -> add(param)
                         is Boolean -> add(param)
                         is Property -> add(param.value)
                     }
