@@ -9,7 +9,7 @@ interface Player {
 
     suspend fun getPause(): Boolean?
 
-    suspend fun jumpTo(time: Int)
+    suspend fun jumpTo(time: Double)
 
     suspend fun getPlaybackTime(): Double?
 

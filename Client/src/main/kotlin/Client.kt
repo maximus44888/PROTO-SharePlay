@@ -29,8 +29,8 @@ suspend fun main() {
 
         launch(Dispatchers.IO) {
             while (true) {
-                val input = readln().toDouble()
-                mpv.jumpTo(input.toInt())
+                val input = readln().toDoubleOrNull()
+                if (input != null) mpv.jumpTo(input)
             }
         }
 

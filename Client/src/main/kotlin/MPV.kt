@@ -110,7 +110,7 @@ class MPV(
         return response["data"]?.jsonPrimitive?.booleanOrNull
     }
 
-    override suspend fun jumpTo(time: Int) {
+    override suspend fun jumpTo(time: Double) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
     }
 
