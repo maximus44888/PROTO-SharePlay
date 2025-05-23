@@ -14,4 +14,6 @@ interface Player {
     suspend fun getPlaybackTime(): Double?
 
     suspend fun observePause(): ReceiveChannel<Boolean>
+
+    suspend fun observeSeek(): ReceiveChannel<Double>
 }

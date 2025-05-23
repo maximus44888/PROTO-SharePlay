@@ -29,11 +29,14 @@ suspend fun main() {
 
         launch(Dispatchers.IO) {
             while (true) {
-                val input = readln().toInt()
-                println("Previous pause: ${mpv.getPause()}")
-                println("Previous playback time: ${mpv.getPlaybackTime()}")
-                if (input == 0) mpv.pause(false)
-                else if (input == 1) mpv.pause(true)
+                val input = readln().toDouble()
+                mpv.jumpTo(input.toInt())
+            }
+        }
+
+        launch(Dispatchers.IO) {
+            mpv.observeSeek().consumeEach {
+                println("Seeked to -> $it")
             }
         }
     }

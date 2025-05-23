@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -35,6 +36,7 @@ class MPV(
     private val responses: ReceiveChannel<JsonObject>
     private val requests = mutableMapOf<Int, CompletableDeferred<JsonObject>>()
     private val observedProperties = mutableMapOf<Int, Channel<JsonObject>>()
+    private val observedEvents = mutableMapOf<IPC.Event.Type, Channel<JsonObject>>()
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -71,7 +73,10 @@ class MPV(
                     response["id"]?.jsonPrimitive?.intOrNull?.let { id ->
                         observedProperties[id]?.send(response)
                     }
-                    println(response)
+                    val event = response["event"]?.jsonPrimitive?.contentOrNull
+                    observedEvents.forEach { (eventType, channel) ->
+                        if (eventType.value == event) channel.send(response)
+                    }
                 }
             }
         }
@@ -122,6 +127,13 @@ class MPV(
         writer.writeRequest(request)
 
         return channel.map { it?.get("data")?.jsonPrimitive?.booleanOrNull }.filterNotNull()
+    }
+
+    override suspend fun observeSeek(): ReceiveChannel<Double> {
+        val channel = Channel<JsonObject>()
+        observedEvents[IPC.Event.Type.SEEK] = channel
+
+        return channel.map { getPlaybackTime() }.filterNotNull()
     }
 }
 
