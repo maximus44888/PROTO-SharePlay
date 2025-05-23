@@ -92,10 +92,6 @@ class MPV(
         completableDeferred.await()
     }
 
-    suspend fun volume(volume: Int) {
-        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.VOLUME, volume))
-    }
-
     override suspend fun loadFile(fileIdentifier: String) {
         writer.writeRequest(IPC.Request.LoadFile(fileIdentifier))
     }
@@ -104,17 +100,11 @@ class MPV(
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, pause))
     }
 
-    override suspend fun getPause(): Boolean? {
-        val request = IPC.Request.GetProperty(IPC.Property.PAUSE)
-        val response = writer.writeRequest(request)
-        return response["data"]?.jsonPrimitive?.booleanOrNull
-    }
-
     override suspend fun jumpTo(time: Double) {
         writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
     }
 
-    override suspend fun getPlaybackTime(): Double? {
+    suspend fun getPlaybackTime(): Double? {
         val request = IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME)
         val response = writer.writeRequest(request)
         return response["data"]?.jsonPrimitive?.doubleOrNull

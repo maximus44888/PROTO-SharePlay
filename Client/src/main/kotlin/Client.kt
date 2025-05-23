@@ -11,31 +11,42 @@ const val mediaPath =
 const val mpvPath = "mpv"
 
 suspend fun main() {
-    val mpv = MPV(mpvPath)
+    val player: Player = MPV(mpvPath)
 
-    mpv.pause(true)
-    mpv.volume(0)
-    mpv.loadFile(mediaPath)
+    player.pause(true)
+    player.loadFile(mediaPath)
 
     coroutineScope {
         launch(Dispatchers.IO) {
-            mpv.observePause().consumeEach {
+            player.observePause().consumeEach {
                 if (it) println("Paused")
                 else println("Resumed")
-
-                println("Current playback time: ${mpv.getPlaybackTime()}")
             }
         }
 
         launch(Dispatchers.IO) {
             while (true) {
-                val input = readln().toDoubleOrNull()
-                if (input != null) mpv.jumpTo(input)
+                val input = readln()
+                val doubleInput = input.toDoubleOrNull()
+                if (doubleInput != null) player.jumpTo(doubleInput)
+                else {
+                    val stringInput = input
+                    when (stringInput) {
+                        "pause" -> player.pause(true)
+                        "resume" -> player.pause(false)
+                        "exit" -> {
+                            println("Exiting...")
+                            return@launch
+                        }
+
+                        else -> println("Invalid input")
+                    }
+                }
             }
         }
 
         launch(Dispatchers.IO) {
-            mpv.observeSeek().consumeEach {
+            player.observeSeek().consumeEach {
                 println("Seeked to -> $it")
             }
         }
