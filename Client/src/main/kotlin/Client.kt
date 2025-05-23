@@ -14,6 +14,7 @@ suspend fun main() {
     val mpv = MPV(mpvPath)
 
     mpv.pause(true)
+    mpv.volume(0)
     mpv.loadFile(mediaPath)
 
     coroutineScope {

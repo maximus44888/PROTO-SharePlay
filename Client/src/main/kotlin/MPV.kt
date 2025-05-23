@@ -87,6 +87,10 @@ class MPV(
         completableDeferred.await()
     }
 
+    suspend fun volume(volume: Int) {
+        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.VOLUME, volume))
+    }
+
     override suspend fun loadFile(fileIdentifier: String) {
         writer.writeRequest(IPC.Request.LoadFile(fileIdentifier))
     }
