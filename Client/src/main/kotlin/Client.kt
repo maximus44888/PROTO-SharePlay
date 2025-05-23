@@ -20,8 +20,10 @@ suspend fun main() {
     coroutineScope {
         launch(Dispatchers.IO) {
             mpv.observePause().consumeEach {
-                println("New pause: $it")
-                println("New playback time: ${mpv.getPlaybackTime()}")
+                if (it) println("Paused")
+                else println("Resumed")
+
+                println("Current playback time: ${mpv.getPlaybackTime()}")
             }
         }
 
