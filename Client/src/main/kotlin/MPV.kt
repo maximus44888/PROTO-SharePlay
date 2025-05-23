@@ -126,7 +126,7 @@ class MPV(
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T, R> ReceiveChannel<T?>.map(transform: (T?) -> R) =
+fun <T, R> ReceiveChannel<T?>.map(transform: suspend (T?) -> R) =
     CoroutineScope(Dispatchers.IO).produce {
         for (item in this@map) {
             send(transform(item))
