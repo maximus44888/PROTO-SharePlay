@@ -5,6 +5,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.net.Socket
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,9 +35,9 @@ class MPV(
     private val writer: PrintWriter
     private val reader: BufferedReader
     private val responses: ReceiveChannel<JsonObject>
-    private val requests = mutableMapOf<Int, CompletableDeferred<JsonObject>>()
-    private val observedProperties = mutableMapOf<Int, Channel<JsonObject>>()
-    private val observedEvents = mutableMapOf<IPC.Event.Type, Channel<JsonObject>>()
+    private val requests = ConcurrentHashMap<Int, CompletableDeferred<JsonObject>>()
+    private val observedProperties = ConcurrentHashMap<Int, Channel<JsonObject>>()
+    private val observedEvents = ConcurrentHashMap<IPC.Event.Type, Channel<JsonObject>>()
 
     init {
         @OptIn(ExperimentalUuidApi::class)
