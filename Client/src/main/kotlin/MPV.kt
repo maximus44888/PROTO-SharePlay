@@ -83,7 +83,7 @@ class MPV(
     private suspend fun IPC.Request.execute(): JsonObject {
         val completableDeferred = CompletableDeferred<JsonObject>()
         requests[requestId] = completableDeferred
-        writer.println(toJsonString())
+        writer.println(jsonString)
         return completableDeferred.await()
     }
 

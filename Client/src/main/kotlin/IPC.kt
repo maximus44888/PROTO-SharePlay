@@ -35,7 +35,7 @@ object IPC {
         val requestId = Companion.requestId
 
         @OptIn(ExperimentalSerializationApi::class)
-        fun toJsonString() = buildJsonObject {
+        val jsonString = buildJsonObject {
             putJsonArray("command") {
                 add(command.value)
                 parameters.forEach { param ->
