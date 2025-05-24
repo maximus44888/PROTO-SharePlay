@@ -119,7 +119,7 @@ class MPV(
 
     override suspend fun observeSeek(): SharedFlow<Double> {
         return responses
-            .filter { it["event"]?.jsonPrimitive?.content == IPC.Event.Type.SEEK.value }
+            .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
             .map { getPlaybackTime() }
             .filterNotNull()
             .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
