@@ -5,6 +5,9 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.fetchAndIncrement
 
 object IPC {
     internal enum class Command(val value: String) {
@@ -19,18 +22,17 @@ object IPC {
         PLAYBACK_TIME("playback-time"),
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     sealed class Request(
         internal val command: Command,
         internal val parameters: List<Any>,
         internal open val async: Boolean? = null,
     ) {
-        internal companion object {
-            var requestId = 0
-                get() = field++
-                internal set(value) = Unit
+        private companion object {
+            private val _requestId = AtomicInt(0)
         }
 
-        val requestId = Companion.requestId
+        val requestId = _requestId.fetchAndIncrement()
 
         @OptIn(ExperimentalSerializationApi::class)
         val jsonString = buildJsonObject {
@@ -66,20 +68,25 @@ object IPC {
             parameters = listOf(property, value),
         )
 
-        data class ObserveProperty(
+        @ConsistentCopyVisibility
+        @OptIn(ExperimentalAtomicApi::class)
+        data class ObserveProperty private constructor(
+            val id: Int,
             private val property: Property,
             override val async: Boolean? = null,
         ) : Request(
             command = Command.OBSERVE_PROPERTY,
             parameters = listOf(id, property),
         ) {
-            internal companion object {
-                var id = 1
-                    get() = field++
-                    internal set(value) = Unit
-            }
+            constructor(property: Property, async: Boolean? = null) : this(
+                id = _id.fetchAndIncrement(),
+                property = property,
+                async = async
+            )
 
-            val id = Companion.id
+            private companion object {
+                private val _id = AtomicInt(1)
+            }
         }
 
         data class LoadFile(
