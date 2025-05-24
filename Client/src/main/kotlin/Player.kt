@@ -1,6 +1,6 @@
 package tfg.proto.shareplay
 
-import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.flow.SharedFlow
 
 interface Player {
     suspend fun loadFile(fileIdentifier: String)
@@ -9,7 +9,7 @@ interface Player {
 
     suspend fun jumpTo(time: Double)
 
-    suspend fun observePause(): ReceiveChannel<Boolean>
+    suspend fun observePause(): SharedFlow<Boolean>
 
-    suspend fun observeSeek(): ReceiveChannel<Double>
+    suspend fun observeSeek(): SharedFlow<Double>
 }

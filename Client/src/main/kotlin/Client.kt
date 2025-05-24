@@ -2,7 +2,6 @@ package tfg.proto.shareplay
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -18,7 +17,7 @@ suspend fun main() {
 
     coroutineScope {
         launch(Dispatchers.IO) {
-            player.observePause().consumeEach {
+            player.observePause().collect {
                 if (it) println("Paused")
                 else println("Resumed")
             }
@@ -46,7 +45,7 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
-            player.observeSeek().consumeEach {
+            player.observeSeek().collect {
                 println("Seeked to -> $it")
             }
         }

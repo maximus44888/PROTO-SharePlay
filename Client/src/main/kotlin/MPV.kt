@@ -11,15 +11,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -34,10 +38,8 @@ class MPV(
 ) : Player {
     private val writer: PrintWriter
     private val reader: BufferedReader
-    private val responses: ReceiveChannel<JsonObject>
+    private val responses: SharedFlow<JsonObject>
     private val requests = ConcurrentHashMap<Int, CompletableDeferred<JsonObject>>()
-    private val observedProperties = ConcurrentHashMap<Int, Channel<JsonObject>>()
-    private val observedEvents = ConcurrentHashMap<IPC.Event.Type, Channel<JsonObject>>()
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -60,86 +62,66 @@ class MPV(
         writer = PrintWriter(pipeSocket.outputStream, true)
         reader = pipeSocket.inputStream.bufferedReader()
 
-        responses = CoroutineScope(Dispatchers.IO).produce {
-            while (true) send(reader.readResponse())
-        }
+        responses = flow {
+            while (true) {
+                val responseLine = withContext(Dispatchers.IO) { reader.readLine() }
+                emit(Json.parseToJsonElement(responseLine).jsonObject)
+            }
+        }.shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
 
         CoroutineScope(Dispatchers.IO).launch {
-            for (response in responses) {
-                launch(Dispatchers.IO) {
-                    response["request_id"]?.jsonPrimitive?.intOrNull?.let { requestId ->
-                        requests[requestId]?.complete(response)
-                        requests.remove(requestId)
-                    }
-                    response["id"]?.jsonPrimitive?.intOrNull?.let { id ->
-                        observedProperties[id]?.send(response)
-                    }
-                    val event = response["event"]?.jsonPrimitive?.contentOrNull
-                    observedEvents.forEach { (eventType, channel) ->
-                        if (eventType.value == event) channel.send(response)
-                    }
+            responses.collect {
+                val requestId = it["request_id"]?.jsonPrimitive?.intOrNull
+                if (requestId != null) {
+                    requests[requestId]?.complete(it)
+                    requests.remove(requestId)
                 }
             }
         }
     }
 
-    private suspend fun BufferedReader.readResponse() =
-        withContext(Dispatchers.IO) { Json.parseToJsonElement(readLine()).jsonObject }
-
-    private suspend fun PrintWriter.writeRequest(request: IPC.Request) = withContext(Dispatchers.IO) {
+    private suspend fun IPC.Request.execute(): JsonObject {
         val completableDeferred = CompletableDeferred<JsonObject>()
-        requests[request.requestId] = completableDeferred
-        println(request.toJsonString())
-        completableDeferred.await()
+        requests[requestId] = completableDeferred
+        writer.println(toJsonString())
+        return completableDeferred.await()
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
-        writer.writeRequest(IPC.Request.LoadFile(fileIdentifier))
+        IPC.Request.LoadFile(fileIdentifier).execute()
     }
 
     override suspend fun pause(pause: Boolean) {
-        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PAUSE, pause))
+        IPC.Request.SetProperty(IPC.Property.PAUSE, pause).execute()
     }
 
     override suspend fun jumpTo(time: Double) {
-        writer.writeRequest(IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time))
+        IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time).execute()
     }
 
     suspend fun getPlaybackTime(): Double? {
-        val request = IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME)
-        val response = writer.writeRequest(request)
+        val response = IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME).execute()
         return response["data"]?.jsonPrimitive?.doubleOrNull
     }
 
-    override suspend fun observePause(): ReceiveChannel<Boolean> {
-        val request = IPC.Request.ObserveProperty(IPC.Property.PAUSE)
-        val channel = Channel<JsonObject>()
-        observedProperties[request.id] = channel
-        writer.writeRequest(request)
+    override suspend fun observePause(): SharedFlow<Boolean> {
+        val property = IPC.Property.PAUSE
+        val request = IPC.Request.ObserveProperty(property)
 
-        return channel.map { it?.get("data")?.jsonPrimitive?.booleanOrNull }.filterNotNull()
+        return responses
+            .onStart { request.execute() }
+            .filter {
+                it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
+            }.map {
+                it["data"]?.jsonPrimitive?.booleanOrNull
+            }.filterNotNull().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
 
-    override suspend fun observeSeek(): ReceiveChannel<Double> {
-        val channel = Channel<JsonObject>()
-        observedEvents[IPC.Event.Type.SEEK] = channel
-
-        return channel.map { getPlaybackTime() }.filterNotNull()
+    override suspend fun observeSeek(): SharedFlow<Double> {
+        return responses
+            .filter { it["event"]?.jsonPrimitive?.content == IPC.Event.Type.SEEK.value }
+            .map { getPlaybackTime() }
+            .filterNotNull()
+            .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
 }
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T, R> ReceiveChannel<T?>.map(transform: suspend (T?) -> R) =
-    CoroutineScope(Dispatchers.IO).produce {
-        for (item in this@map) {
-            send(transform(item))
-        }
-    }
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun <T> ReceiveChannel<T?>.filterNotNull(): ReceiveChannel<T> =
-    CoroutineScope(Dispatchers.IO).produce {
-        for (item in this@filterNotNull) {
-            if (item != null) send(item)
-        }
-    }
