@@ -92,7 +92,7 @@ class MPV(
     override suspend fun loadMedia(mediaURI: URI) {
         incoming
             .onStart { IPC.Request.LoadFile(mediaURI.toString()).execute() }
-            .first { it["event"]?.jsonPrimitive?.content == "file-loaded" }
+            .first { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
     }
 
     override suspend fun resume() {
@@ -245,6 +245,7 @@ class MPV(
 
         enum class EventType(val value: String) {
             SEEK("seek"),
+            FILE_LOADED("file-loaded"),
         }
     }
 }
