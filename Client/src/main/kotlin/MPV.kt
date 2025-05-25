@@ -125,7 +125,6 @@ class MPV(
 
     override val loadedMediaEvents: SharedFlow<URI> by lazy {
         return@lazy incoming
-            .onStart { IPC.Request.ObserveProperty(IPC.Property.PATH).execute() }
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
             .mapNotNull { getMedia() }
             .shareIn(scope, SharingStarted.Eagerly, 0)
