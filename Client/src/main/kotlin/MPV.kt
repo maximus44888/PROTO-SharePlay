@@ -1,6 +1,5 @@
 package tfg.proto.shareplay
 
-import java.io.BufferedReader
 import java.io.File
 import java.io.PrintWriter
 import java.lang.Thread.sleep
@@ -43,7 +42,6 @@ class MPV(
     mpvPath: String
 ) : Player {
     private val writer: PrintWriter
-    private val reader: BufferedReader
     private val responses: SharedFlow<JsonObject>
 
     init {
@@ -65,12 +63,13 @@ class MPV(
         val pipeSocket: Socket = Win32NamedPipeSocket(pipePath)
 
         writer = PrintWriter(pipeSocket.outputStream, true)
-        reader = pipeSocket.inputStream.bufferedReader()
 
         responses = flow {
-            while (true) {
-                val responseLine = withContext(Dispatchers.IO) { reader.readLine() }
-                emit(Json.parseToJsonElement(responseLine).jsonObject)
+            pipeSocket.inputStream.bufferedReader().use {
+                while (true) {
+                    val responseLine = withContext(Dispatchers.IO) { it.readLine() }
+                    emit(Json.parseToJsonElement(responseLine).jsonObject)
+                }
             }
         }.shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
