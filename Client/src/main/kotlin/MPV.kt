@@ -84,8 +84,12 @@ class MPV(
         IPC.Request.LoadFile(fileIdentifier).execute()
     }
 
-    override suspend fun pause(pause: Boolean) {
-        IPC.Request.SetProperty(IPC.Property.PAUSE, pause).execute()
+    override suspend fun resume() {
+        IPC.Request.SetProperty(IPC.Property.PAUSE, false).execute()
+    }
+
+    override suspend fun pause() {
+        IPC.Request.SetProperty(IPC.Property.PAUSE, true).execute()
     }
 
     override suspend fun seek(time: Double) {

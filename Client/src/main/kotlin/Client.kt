@@ -12,7 +12,7 @@ const val mpvPath = "mpv"
 suspend fun main() {
     val player: Player = MPV(mpvPath)
 
-    player.pause(true)
+    player.pause()
     player.loadFile(mediaPath)
 
     coroutineScope {
@@ -31,8 +31,8 @@ suspend fun main() {
                 else {
                     val stringInput = input
                     when (stringInput) {
-                        "pause" -> player.pause(true)
-                        "resume" -> player.pause(false)
+                        "pause" -> player.pause()
+                        "resume" -> player.resume()
                         "exit" -> {
                             println("Exiting...")
                             return@launch
