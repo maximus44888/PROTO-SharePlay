@@ -51,7 +51,7 @@ class MPV(
     private val incoming: SharedFlow<JsonObject>
     private val execute: suspend IPC.Request.() -> JsonObject
     private val scope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
-    val durationUnit = DurationUnit.MILLISECONDS
+    override val durationUnit = DurationUnit.SECONDS
 
     init {
         @OptIn(ExperimentalUuidApi::class)

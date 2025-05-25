@@ -3,8 +3,11 @@ package tfg.proto.shareplay
 import java.net.URI
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.time.Duration
+import kotlin.time.DurationUnit
 
 interface Player {
+    val durationUnit: DurationUnit
+
     suspend fun loadMedia(mediaURI: URI)
 
     suspend fun resume()

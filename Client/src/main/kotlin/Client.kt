@@ -6,7 +6,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.io.path.Path
-import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 const val mediaURL =
@@ -41,7 +40,7 @@ suspend fun main() {
                 println("Enter a time in milliseconds to seek; or 'pause', 'resume' or 'exit'")
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
-                if (doubleInput != null) player.seek(doubleInput.toDuration(DurationUnit.MILLISECONDS))
+                if (doubleInput != null) player.seek(doubleInput.toDuration(player.durationUnit))
                 else {
                     val stringInput = input
                     when (stringInput) {
