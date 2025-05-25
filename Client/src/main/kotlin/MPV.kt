@@ -4,6 +4,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.net.Socket
+import java.net.URI
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +35,7 @@ import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndIncrement
+import kotlin.io.path.Path
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -84,8 +86,8 @@ class MPV(
         }.shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
 
-    override suspend fun loadFile(fileIdentifier: String) {
-        IPC.Request.LoadFile(fileIdentifier).execute()
+    override suspend fun loadMedia(mediaURI: URI) {
+        IPC.Request.LoadFile(mediaURI.toString()).execute()
     }
 
     override suspend fun resume() {
@@ -105,7 +107,7 @@ class MPV(
         return response["data"]?.jsonPrimitive?.doubleOrNull?.toDuration(durationUnit)
     }
 
-    override val loadedFileEvents: SharedFlow<String> by lazy {
+    override val loadedMediaEvents: SharedFlow<URI> by lazy {
         val property = IPC.Property.PATH
         val request = IPC.Request.ObserveProperty(property)
 
@@ -115,6 +117,8 @@ class MPV(
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
             }.map { 
                 it["data"]?.jsonPrimitive?.content
+            }.map {
+                it?.let { Path(it).toUri() }
             }.filterNotNull()
             .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }

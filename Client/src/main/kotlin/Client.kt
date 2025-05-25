@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlin.io.path.Path
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -15,7 +16,7 @@ suspend fun main() {
     val player: Player = MPV(mpvPath)
 
     player.pause()
-    player.loadFile(mediaPath)
+    player.loadMedia(Path(mediaPath).toUri())
 
     coroutineScope {
         launch(Dispatchers.IO) {
@@ -53,7 +54,7 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
-            player.loadedFileEvents.collect {
+            player.loadedMediaEvents.collect {
                 println("Loaded file: $it")
             }
         }
