@@ -9,6 +9,8 @@ import kotlin.io.path.Path
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
+const val mediaURL =
+    """https://youtu.be/dQw4w9WgXcQ?si=HD7Uz2iicApUBFUf"""
 const val mediaPath =
     """C:\Users\jmaxi\Mis ficheros\Anime\86 S01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\86 S01P01+SP 1080p Dual Audio BDRip 10 bits DD+ x265-EMBER\S01E01-Undertaker [2F703024].mkv"""
 const val mpvPath = "mpv"
@@ -16,8 +18,11 @@ const val mpvPath = "mpv"
 suspend fun main() {
     val player: Player = MPV(mpvPath)
 
-    player.pause()
-    player.loadMedia(Path(mediaPath).toUri())
+    println("Loading media from URL: $mediaURL")
+    player.loadMedia(URI(mediaURL))
+    println("Media loaded!!!")
+
+    println("----------------------------------")
 
     coroutineScope {
         launch(Dispatchers.IO) {
@@ -28,9 +33,10 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
-            println("Enter to start URL playback")
+            println("Enter to load media from path: $mediaPath")
             readln()
-            player.loadMedia(URI("""https://youtu.be/HzenVUOGkt4?si=LNQnYMIbTvQgEp-b"""))
+            player.loadMedia(Path(mediaPath).toUri())
+            player.pause()
             while (true) {
                 println("Enter a time in milliseconds to seek; or 'pause', 'resume' or 'exit'")
                 val input = readln()
