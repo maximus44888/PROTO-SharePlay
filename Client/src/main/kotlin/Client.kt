@@ -17,7 +17,7 @@ suspend fun main() {
 
     coroutineScope {
         launch(Dispatchers.IO) {
-            player.observePause().collect {
+            player.pauseEvents.collect {
                 if (it) println("Paused")
                 else println("Resumed")
             }
@@ -45,7 +45,7 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
-            player.observeSeek().collect {
+            player.seekEvents.collect {
                 println("Seeked to -> $it")
             }
         }

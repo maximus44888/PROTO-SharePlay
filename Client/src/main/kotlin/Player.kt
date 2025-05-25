@@ -9,7 +9,7 @@ interface Player {
 
     suspend fun jumpTo(time: Double)
 
-    suspend fun observePause(): SharedFlow<Boolean>
+    val pauseEvents: SharedFlow<Boolean>
 
-    suspend fun observeSeek(): SharedFlow<Double>
+    val seekEvents: SharedFlow<Double>
 }

@@ -97,11 +97,11 @@ class MPV(
         return response["data"]?.jsonPrimitive?.doubleOrNull
     }
 
-    override suspend fun observePause(): SharedFlow<Boolean> {
+    override val pauseEvents: SharedFlow<Boolean> by lazy {
         val property = IPC.Property.PAUSE
         val request = IPC.Request.ObserveProperty(property)
 
-        return incoming
+        return@lazy incoming
             .onStart { request.execute() }
             .filter {
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
@@ -110,8 +110,8 @@ class MPV(
             }.filterNotNull().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
 
-    override suspend fun observeSeek(): SharedFlow<Double> {
-        return incoming
+    override val seekEvents: SharedFlow<Double> by lazy {
+        return@lazy incoming
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
             .map { getPlaybackTime() }
             .filterNotNull()
