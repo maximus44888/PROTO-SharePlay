@@ -1,5 +1,6 @@
 package tfg.proto.shareplay
 
+import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
@@ -27,7 +28,11 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
+            println("Enter to start URL playback")
+            readln()
+            player.loadMedia(URI("""https://youtu.be/HzenVUOGkt4?si=LNQnYMIbTvQgEp-b"""))
             while (true) {
+                println("Enter a time in milliseconds to seek; or 'pause', 'resume' or 'exit'")
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
                 if (doubleInput != null) player.seek(doubleInput.toDuration(DurationUnit.MILLISECONDS))

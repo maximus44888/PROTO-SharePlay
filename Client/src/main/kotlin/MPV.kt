@@ -120,8 +120,11 @@ class MPV(
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
             }.map {
                 it["data"]?.jsonPrimitive?.content
-            }.map {
-                it?.let { Path(it).toUri() }
+            }.map { raw ->
+                runCatching { Path(raw!!).toUri() }
+                    .getOrElse {
+                        runCatching { URI(raw!!) }.getOrNull()
+                    }
             }.filterNotNull()
             .shareIn(scope, SharingStarted.Eagerly, 0)
     }
