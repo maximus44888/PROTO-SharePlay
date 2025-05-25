@@ -27,6 +27,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -95,6 +96,16 @@ class MPV(
             .first { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
     }
 
+    suspend fun getMedia(): URI? {
+        val response = IPC.Request.GetProperty(IPC.Property.PATH).execute()
+        return response["data"]?.jsonPrimitive?.contentOrNull?.let { rawPath ->
+            runCatching { Path(rawPath).toUri() }
+                .getOrElse {
+                    runCatching { URI(rawPath) }.getOrNull()
+                }
+        }
+    }
+
     override suspend fun resume() {
         IPC.Request.SetProperty(IPC.Property.PAUSE, false).execute()
     }
@@ -113,21 +124,11 @@ class MPV(
     }
 
     override val loadedMediaEvents: SharedFlow<URI> by lazy {
-        val property = IPC.Property.PATH
-        val request = IPC.Request.ObserveProperty(property)
-
         return@lazy incoming
-            .onStart { request.execute() }
-            .filter {
-                it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
-            }.map {
-                it["data"]?.jsonPrimitive?.content
-            }.map { raw ->
-                runCatching { Path(raw!!).toUri() }
-                    .getOrElse {
-                        runCatching { URI(raw!!) }.getOrNull()
-                    }
-            }.filterNotNull()
+            .onStart { IPC.Request.ObserveProperty(IPC.Property.PATH).execute() }
+            .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
+            .map { getMedia() }
+            .filterNotNull()
             .shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
