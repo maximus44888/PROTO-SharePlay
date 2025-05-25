@@ -41,8 +41,8 @@ import kotlin.uuid.Uuid
 class MPV(
     mpvPath: String
 ) : Player {
-    private val writer: PrintWriter
     private val incoming: SharedFlow<JsonObject>
+    private val execute: suspend IPC.Request.() -> JsonObject
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -62,7 +62,13 @@ class MPV(
 
         val pipeSocket: Socket = Win32NamedPipeSocket(pipePath)
 
-        writer = PrintWriter(pipeSocket.outputStream, true)
+        val writer = PrintWriter(pipeSocket.outputStream, true)
+
+        execute = {
+            incoming
+                .onStart { writer.println(jsonString) }
+                .first { it["request_id"]?.jsonPrimitive?.intOrNull == requestId }
+        }
 
         incoming = flow {
             pipeSocket.inputStream.bufferedReader().use {
@@ -72,12 +78,6 @@ class MPV(
                 }
             }
         }.shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
-    }
-
-    private suspend fun IPC.Request.execute(): JsonObject {
-        return incoming
-            .onStart { writer.println(jsonString) }
-            .first { it["request_id"]?.jsonPrimitive?.intOrNull == requestId }
     }
 
     override suspend fun loadFile(fileIdentifier: String) {
