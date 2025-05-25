@@ -42,7 +42,7 @@ class MPV(
     mpvPath: String
 ) : Player {
     private val writer: PrintWriter
-    private val responses: SharedFlow<JsonObject>
+    private val incoming: SharedFlow<JsonObject>
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -64,7 +64,7 @@ class MPV(
 
         writer = PrintWriter(pipeSocket.outputStream, true)
 
-        responses = flow {
+        incoming = flow {
             pipeSocket.inputStream.bufferedReader().use {
                 while (true) {
                     val responseLine = withContext(Dispatchers.IO) { it.readLine() }
@@ -75,7 +75,7 @@ class MPV(
     }
 
     private suspend fun IPC.Request.execute(): JsonObject {
-        return responses
+        return incoming
             .onStart { writer.println(jsonString) }
             .first { it["request_id"]?.jsonPrimitive?.intOrNull == requestId }
     }
@@ -101,7 +101,7 @@ class MPV(
         val property = IPC.Property.PAUSE
         val request = IPC.Request.ObserveProperty(property)
 
-        return responses
+        return incoming
             .onStart { request.execute() }
             .filter {
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
@@ -111,7 +111,7 @@ class MPV(
     }
 
     override suspend fun observeSeek(): SharedFlow<Double> {
-        return responses
+        return incoming
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
             .map { getPlaybackTime() }
             .filterNotNull()
