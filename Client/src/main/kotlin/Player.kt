@@ -1,6 +1,7 @@
 package tfg.proto.shareplay
 
 import kotlinx.coroutines.flow.SharedFlow
+import kotlin.time.Duration
 
 interface Player {
     suspend fun loadFile(fileIdentifier: String)
@@ -9,9 +10,9 @@ interface Player {
 
     suspend fun pause()
 
-    suspend fun seek(time: Double)
+    suspend fun seek(time: Duration)
 
     val pauseEvents: SharedFlow<Boolean>
 
-    val seekEvents: SharedFlow<Double>
+    val seekEvents: SharedFlow<Duration>
 }

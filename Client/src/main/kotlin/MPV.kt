@@ -34,6 +34,9 @@ import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndIncrement
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -43,6 +46,7 @@ class MPV(
 ) : Player {
     private val incoming: SharedFlow<JsonObject>
     private val execute: suspend IPC.Request.() -> JsonObject
+    val durationUnit = DurationUnit.MILLISECONDS
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -92,13 +96,13 @@ class MPV(
         IPC.Request.SetProperty(IPC.Property.PAUSE, true).execute()
     }
 
-    override suspend fun seek(time: Double) {
-        IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time).execute()
+    override suspend fun seek(time: Duration) {
+        IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time.toDouble(durationUnit)).execute()
     }
 
-    suspend fun getPlaybackTime(): Double? {
+    suspend fun getPlaybackTime(): Duration? {
         val response = IPC.Request.GetProperty(IPC.Property.PLAYBACK_TIME).execute()
-        return response["data"]?.jsonPrimitive?.doubleOrNull
+        return response["data"]?.jsonPrimitive?.doubleOrNull?.toDuration(durationUnit)
     }
 
     override val pauseEvents: SharedFlow<Boolean> by lazy {
@@ -114,7 +118,7 @@ class MPV(
             }.filterNotNull().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
     }
 
-    override val seekEvents: SharedFlow<Double> by lazy {
+    override val seekEvents: SharedFlow<Duration> by lazy {
         return@lazy incoming
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
             .map { getPlaybackTime() }
