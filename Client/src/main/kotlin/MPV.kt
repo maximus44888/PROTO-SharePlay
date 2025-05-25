@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filter
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -48,6 +50,7 @@ class MPV(
 ) : Player {
     private val incoming: SharedFlow<JsonObject>
     private val execute: suspend IPC.Request.() -> JsonObject
+    private val scope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
     val durationUnit = DurationUnit.MILLISECONDS
 
     init {
@@ -83,7 +86,7 @@ class MPV(
                     emit(Json.parseToJsonElement(responseLine).jsonObject)
                 }
             }
-        }.shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
+        }.shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
     override suspend fun loadMedia(mediaURI: URI) {
@@ -115,12 +118,12 @@ class MPV(
             .onStart { request.execute() }
             .filter {
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
-            }.map { 
+            }.map {
                 it["data"]?.jsonPrimitive?.content
             }.map {
                 it?.let { Path(it).toUri() }
             }.filterNotNull()
-            .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
+            .shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
     override val pauseEvents: SharedFlow<Boolean> by lazy {
@@ -133,7 +136,8 @@ class MPV(
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
             }.map {
                 it["data"]?.jsonPrimitive?.booleanOrNull
-            }.filterNotNull().shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
+            }.filterNotNull()
+            .shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
     override val seekEvents: SharedFlow<Duration> by lazy {
@@ -141,7 +145,7 @@ class MPV(
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
             .map { getPlaybackTime() }
             .filterNotNull()
-            .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
+            .shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
     object IPC {
