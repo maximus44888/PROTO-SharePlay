@@ -51,5 +51,11 @@ suspend fun main() {
                 println("Seeked to -> $it")
             }
         }
+
+        launch(Dispatchers.IO) {
+            player.loadedFileEvents.collect {
+                println("Loaded file: $it")
+            }
+        }
     }
 }

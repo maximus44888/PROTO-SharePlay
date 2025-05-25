@@ -105,6 +105,20 @@ class MPV(
         return response["data"]?.jsonPrimitive?.doubleOrNull?.toDuration(durationUnit)
     }
 
+    override val loadedFileEvents: SharedFlow<String> by lazy {
+        val property = IPC.Property.PATH
+        val request = IPC.Request.ObserveProperty(property)
+
+        return@lazy incoming
+            .onStart { request.execute() }
+            .filter {
+                it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
+            }.map { 
+                it["data"]?.jsonPrimitive?.content
+            }.filterNotNull()
+            .shareIn(CoroutineScope(Dispatchers.IO), SharingStarted.Eagerly, 0)
+    }
+
     override val pauseEvents: SharedFlow<Boolean> by lazy {
         val property = IPC.Property.PAUSE
         val request = IPC.Request.ObserveProperty(property)
@@ -135,6 +149,7 @@ class MPV(
         }
 
         enum class Property(val value: String) {
+            PATH("path"),
             PAUSE("pause"),
             PLAYBACK_TIME("playback-time"),
         }

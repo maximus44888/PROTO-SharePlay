@@ -12,6 +12,8 @@ interface Player {
 
     suspend fun seek(time: Duration)
 
+    val loadedFileEvents: SharedFlow<String>
+
     val pauseEvents: SharedFlow<Boolean>
 
     val seekEvents: SharedFlow<Duration>
