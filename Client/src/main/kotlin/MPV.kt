@@ -88,7 +88,7 @@ class MPV(
         IPC.Request.SetProperty(IPC.Property.PAUSE, pause).execute()
     }
 
-    override suspend fun jumpTo(time: Double) {
+    override suspend fun seek(time: Double) {
         IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time).execute()
     }
 

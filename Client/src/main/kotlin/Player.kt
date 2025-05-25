@@ -7,7 +7,7 @@ interface Player {
 
     suspend fun pause(pause: Boolean)
 
-    suspend fun jumpTo(time: Double)
+    suspend fun seek(time: Double)
 
     val pauseEvents: SharedFlow<Boolean>
 

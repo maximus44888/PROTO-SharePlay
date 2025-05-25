@@ -27,7 +27,7 @@ suspend fun main() {
             while (true) {
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
-                if (doubleInput != null) player.jumpTo(doubleInput)
+                if (doubleInput != null) player.seek(doubleInput)
                 else {
                     val stringInput = input
                     when (stringInput) {
