@@ -84,7 +84,8 @@ class MPV(
             pipeSocket.inputStream.bufferedReader().use {
                 while (true) {
                     val responseLine = withContext(Dispatchers.IO) { it.readLine() }
-                    emit(Json.parseToJsonElement(responseLine).jsonObject)
+                    val responseJson = Json.parseToJsonElement(responseLine).jsonObject
+                    emit(responseJson)
                 }
             }
         }.shareIn(scope, SharingStarted.Eagerly, 0)
