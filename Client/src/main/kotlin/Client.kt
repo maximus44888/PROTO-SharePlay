@@ -1,6 +1,5 @@
 package tfg.proto.shareplay
 
-import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
@@ -17,11 +16,7 @@ const val mpvPath = "mpv"
 suspend fun main() {
     val player: Player = MPV(mpvPath)
 
-    println("Loading media from URL: $mediaURL")
-    player.loadMedia(URI(mediaURL))
-    println("Media loaded!!!")
-
-    println("----------------------------------")
+    player.loadMedia(Path(mediaPath).toUri())
 
     coroutineScope {
         launch(Dispatchers.IO) {
@@ -32,12 +27,7 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
-            println("Enter to load media from path: $mediaPath")
-            readln()
-            player.loadMedia(Path(mediaPath).toUri())
-            player.pause()
             while (true) {
-                println("Enter a time in milliseconds to seek; or 'pause', 'resume' or 'exit'")
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
                 if (doubleInput != null) player.seek(doubleInput.toDuration(player.durationUnit))
@@ -46,12 +36,7 @@ suspend fun main() {
                     when (stringInput) {
                         "pause" -> player.pause()
                         "resume" -> player.resume()
-                        "exit" -> {
-                            println("Exiting...")
-                            return@launch
-                        }
-
-                        else -> println("Invalid input")
+                        "exit" -> return@launch
                     }
                 }
             }

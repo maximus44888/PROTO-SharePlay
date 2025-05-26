@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
@@ -36,6 +37,7 @@ import kotlinx.serialization.json.putJsonArray
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.fetchAndDecrement
 import kotlin.concurrent.atomics.fetchAndIncrement
 import kotlin.io.path.Path
 import kotlin.time.Duration
@@ -44,7 +46,7 @@ import kotlin.time.toDuration
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalAtomicApi::class)
 class MPV(
     mpvPath: String
 ) : Player {
@@ -52,6 +54,10 @@ class MPV(
     private val execute: suspend IPC.Request.() -> JsonObject
     private val scope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
     override val durationUnit = DurationUnit.SECONDS
+
+    private val skipLoadFile = AtomicInt(0)
+    private val skipPause = AtomicInt(0)
+    private val skipSeek = AtomicInt(0)
 
     init {
         @OptIn(ExperimentalUuidApi::class)
@@ -90,7 +96,16 @@ class MPV(
         }.shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
+    fun shouldSkip(counter: AtomicInt): Boolean {
+        if (counter.load() > 0) {
+            counter.fetchAndDecrement()
+            return true
+        }
+        return false
+    }
+
     override suspend fun loadMedia(mediaURI: URI) {
+        skipLoadFile.fetchAndIncrement()
         incoming
             .onStart { IPC.Request.LoadFile(mediaURI.toString()).execute() }
             .first { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
@@ -107,14 +122,17 @@ class MPV(
     }
 
     override suspend fun resume() {
+        skipPause.fetchAndIncrement()
         IPC.Request.SetProperty(IPC.Property.PAUSE, false).execute()
     }
 
     override suspend fun pause() {
+        skipPause.fetchAndIncrement()
         IPC.Request.SetProperty(IPC.Property.PAUSE, true).execute()
     }
 
     override suspend fun seek(time: Duration) {
+        skipSeek.fetchAndIncrement()
         IPC.Request.SetProperty(IPC.Property.PLAYBACK_TIME, time.toDouble(durationUnit)).execute()
     }
 
@@ -126,6 +144,7 @@ class MPV(
     override val loadedMediaEvents: SharedFlow<URI> by lazy {
         return@lazy incoming
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.FILE_LOADED.value }
+            .filterNot { shouldSkip(skipLoadFile) }
             .mapNotNull { getMedia() }
             .shareIn(scope, SharingStarted.Eagerly, 0)
     }
@@ -138,13 +157,15 @@ class MPV(
             .onStart { request.execute() }
             .filter {
                 it["id"]?.jsonPrimitive?.intOrNull == request.id && it["name"]?.jsonPrimitive?.content == property.value
-            }.mapNotNull { it["data"]?.jsonPrimitive?.booleanOrNull }
+            }.filterNot { shouldSkip(skipPause) }
+            .mapNotNull { it["data"]?.jsonPrimitive?.booleanOrNull }
             .shareIn(scope, SharingStarted.Eagerly, 0)
     }
 
     override val seekEvents: SharedFlow<Duration> by lazy {
         return@lazy incoming
             .filter { it["event"]?.jsonPrimitive?.content == IPC.EventType.SEEK.value }
+            .filterNot { shouldSkip(skipSeek) }
             .mapNotNull { getPlaybackTime() }
             .shareIn(scope, SharingStarted.Eagerly, 0)
     }
