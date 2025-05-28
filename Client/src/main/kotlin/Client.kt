@@ -20,13 +20,7 @@ suspend fun main() {
 
     coroutineScope {
         launch(Dispatchers.IO) {
-            player.pauseEvents.collect {
-                if (it) println("Paused")
-                else println("Resumed")
-            }
-        }
-
-        launch(Dispatchers.IO) {
+            // "React" to other players' commands (simulated by reading from console input. In reality, this would be a network message with a custom protocol)
             while (true) {
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
@@ -43,13 +37,23 @@ suspend fun main() {
         }
 
         launch(Dispatchers.IO) {
+            player.pauseEvents.collect {
+                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
+                if (it) println("Paused")
+                else println("Resumed")
+            }
+        }
+
+        launch(Dispatchers.IO) {
             player.seekEvents.collect {
+                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
                 println("Seeked to -> $it")
             }
         }
 
         launch(Dispatchers.IO) {
             player.loadedMediaEvents.collect {
+                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
                 println("Loaded file: $it")
             }
         }
