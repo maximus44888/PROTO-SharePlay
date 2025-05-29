@@ -4,7 +4,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlin.io.path.Path
 import kotlin.time.toDuration
 
 const val mediaURL =
@@ -16,7 +15,7 @@ const val mpvPath = "mpv"
 suspend fun main() {
     val player: Player = MPV(mpvPath)
 
-    player.loadMedia(Path(mediaPath).toUri())
+    player.loadMedia(Player.buildURI(mediaPath)!!)
 
     coroutineScope {
         launch(Dispatchers.IO) {

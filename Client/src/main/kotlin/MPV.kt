@@ -35,11 +35,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket
+import tfg.proto.shareplay.Player.Companion.buildURI
 import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndDecrement
 import kotlin.concurrent.atomics.fetchAndIncrement
-import kotlin.io.path.Path
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -115,12 +115,7 @@ class MPV(
 
     suspend fun getMedia(): URI? {
         val response = IPC.Request.GetProperty(IPC.Property.PATH).execute()
-        return response["data"]?.jsonPrimitive?.contentOrNull?.let { rawPath ->
-            runCatching { Path(rawPath).toUri() }
-                .getOrElse {
-                    runCatching { URI(rawPath) }.getOrNull()
-                }
-        }
+        return response["data"]?.jsonPrimitive?.contentOrNull?.let { buildURI(it) }
     }
 
     override suspend fun resume() {
