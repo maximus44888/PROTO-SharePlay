@@ -1,6 +1,8 @@
 package tfg.proto.shareplay
 
+import java.io.File
 import java.io.PrintWriter
+import java.lang.Thread.sleep
 import java.net.Socket
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
@@ -69,6 +71,10 @@ class MPV(
         ).redirectError(ProcessBuilder.Redirect.DISCARD)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .start()
+
+        File(pipePath).run {
+            while (!exists()) sleep(10)
+        }
 
         val pipeSocket: Socket = Win32NamedPipeSocket(pipePath)
 

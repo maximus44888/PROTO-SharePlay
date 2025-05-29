@@ -13,9 +13,9 @@ const val mediaPath =
 const val mpvPath = "mpv"
 
 suspend fun main() {
-    val player: Player = MPV(mpvPath)
+    val players = List(4) { MPV(mpvPath) }
 
-    player.loadMedia(Player.buildURI(mediaPath)!!)
+    players.forEach { player -> player.loadMedia(Player.buildURI(mediaURL)!!) }
 
     coroutineScope {
         launch(Dispatchers.IO) {
@@ -23,37 +23,48 @@ suspend fun main() {
             while (true) {
                 val input = readln()
                 val doubleInput = input.toDoubleOrNull()
-                if (doubleInput != null) player.seek(doubleInput.toDuration(player.durationUnit))
+                if (doubleInput != null) players.forEach { player -> player.seek(doubleInput.toDuration(player.durationUnit)) }
                 else {
                     val stringInput = input
                     when (stringInput) {
-                        "pause" -> player.pause()
-                        "resume" -> player.resume()
+                        "pause" -> players.forEach { player -> player.pause() }
+                        "resume" -> players.forEach { player -> player.resume() }
                         "exit" -> return@launch
                     }
                 }
             }
         }
 
-        launch(Dispatchers.IO) {
-            player.pauseEvents.collect {
-                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
-                if (it) println("Paused")
-                else println("Resumed")
+        players.forEach { player ->
+            launch(Dispatchers.IO) {
+                player.pauseEvents.collect {
+                    players.forEach { other ->
+                        if (other != player) {
+                            if (it) other.pause()
+                            else other.resume()
+                        }
+                    }
+                }
             }
-        }
 
-        launch(Dispatchers.IO) {
-            player.seekEvents.collect {
-                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
-                println("Seeked to -> $it")
+            launch(Dispatchers.IO) {
+                player.seekEvents.collect {
+                    players.forEach { other ->
+                        if (other != player) {
+                            other.seek(it)
+                        }
+                    }
+                }
             }
-        }
 
-        launch(Dispatchers.IO) {
-            player.loadedMediaEvents.collect {
-                // "Notify" the other players (simulated by printing to console. In reality, this would be a network message with a custom protocol)
-                println("Loaded file: $it")
+            launch(Dispatchers.IO) {
+                player.loadedMediaEvents.collect {
+                    players.forEach { other ->
+                        if (other != player) {
+                            other.loadMedia(it)
+                        }
+                    }
+                }
             }
         }
     }
