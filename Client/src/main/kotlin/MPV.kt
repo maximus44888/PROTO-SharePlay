@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -99,6 +100,7 @@ class MPV(
                 }
             }
         }.shareIn(scope, SharingStarted.Eagerly, 0)
+        CoroutineScope(Dispatchers.IO).launch { pause() }
     }
 
     fun shouldSkip(eventType: String): Boolean {
