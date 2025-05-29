@@ -3,6 +3,7 @@ package tfg.proto.shareplay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlin.time.toDuration
 
@@ -35,36 +36,25 @@ suspend fun main() {
             }
         }
 
+        suspend fun <T> SharedFlow<T>.observeAndExecuteOnOthers(player: Player, action: suspend Player.(T) -> Unit) {
+            this.collect { data ->
+                players
+                    .filter { it != player }
+                    .forEach { other -> other.action(data) }
+            }
+        }
+
         players.forEach { player ->
             launch(Dispatchers.IO) {
-                player.pauseEvents.collect {
-                    players.forEach { other ->
-                        if (other != player) {
-                            if (it) other.pause()
-                            else other.resume()
-                        }
-                    }
-                }
+                player.pauseEvents.observeAndExecuteOnOthers(player) { if (it) pause() else resume() }
             }
 
             launch(Dispatchers.IO) {
-                player.seekEvents.collect {
-                    players.forEach { other ->
-                        if (other != player) {
-                            other.seek(it)
-                        }
-                    }
-                }
+                player.seekEvents.observeAndExecuteOnOthers(player) { seek(it) }
             }
 
             launch(Dispatchers.IO) {
-                player.loadedMediaEvents.collect {
-                    players.forEach { other ->
-                        if (other != player) {
-                            other.loadMedia(it)
-                        }
-                    }
-                }
+                player.loadedMediaEvents.observeAndExecuteOnOthers(player) { loadMedia(it) }
             }
         }
     }
