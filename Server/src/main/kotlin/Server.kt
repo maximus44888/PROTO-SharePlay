@@ -1,7 +1,7 @@
 package tfg.proto.shareplay
 
-import java.io.DataInputStream
-import java.io.DataOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -59,15 +59,12 @@ class Room(private val name: String) {
         log("New client $client added. Total room clients: ${clients.size}")
 
         while (true) {
-            val shouldPause = client.readBoolean()
+            val networkEvent = client.readObject()
 
-            log(
-                "Client $client sent pause: $shouldPause\n" +
-                        "Broadcasting to other clients in room..."
-            )
+            log("Client $client sent: $networkEvent")
 
             clients.filterNot { it == client }.forEach {
-                it.sendBoolean(shouldPause)
+                it.sendObject(networkEvent)
             }
         }
     }
@@ -79,20 +76,14 @@ class Room(private val name: String) {
     class Client(
         private val socket: Socket
     ) {
-        private val dataInputStream: DataInputStream = DataInputStream(socket.inputStream)
-        private val dataOutputStream: DataOutputStream = DataOutputStream(socket.outputStream)
+        private val objectInputStream = ObjectInputStream(socket.inputStream)
+        private val objectOutputStream = ObjectOutputStream(socket.outputStream)
 
-        suspend fun readInt() = withContext(Dispatchers.IO) { dataInputStream.readInt() }
+        suspend fun readObject(): Any = withContext(Dispatchers.IO) { objectInputStream.readObject() }
 
-        internal suspend fun readUTF() = withContext(Dispatchers.IO) { dataInputStream.readUTF() }
+        internal fun sendObject(message: Any) = objectOutputStream.writeObject(message)
 
-        internal suspend fun readBoolean() = withContext(Dispatchers.IO) { dataInputStream.readBoolean() }
-
-        internal fun sendInt(value: Int) = dataOutputStream.writeInt(value)
-
-        internal fun sendUTF(message: String) = dataOutputStream.writeUTF(message)
-
-        internal fun sendBoolean(value: Boolean) = dataOutputStream.writeBoolean(value)
+        internal suspend fun readUTF() = withContext(Dispatchers.IO) { objectInputStream.readUTF() }
 
         override fun toString() = "${socket.inetAddress.hostAddress}:${socket.port}"
     }
