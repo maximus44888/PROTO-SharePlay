@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 val rooms = Rooms()
 
@@ -41,14 +42,20 @@ class Room(private val name: String) {
 
         log("New client $client added. Total room clients: ${clients.size}")
 
-        while (true) {
-            val networkEvent = client.readObject()
+        try {
+            while (true) {
+                val networkEvent = client.readObject()
 
-            log("Client $client sent: $networkEvent")
+                log("Client $client sent: $networkEvent")
 
-            clients.filterNot { it == client }.forEach {
-                it.sendObject(networkEvent)
+                clients.filterNot { it == client }.forEach {
+                    it.sendObject(networkEvent)
+                }
             }
+        } catch (e: IOException) {
+            log("Client $client disconnected")
+            clients.remove(client)
+            log("Total room clients: ${clients.size}")
         }
     }
 

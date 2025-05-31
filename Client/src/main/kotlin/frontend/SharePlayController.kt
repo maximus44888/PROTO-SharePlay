@@ -10,7 +10,10 @@ import javafx.stage.Stage
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
 import java.io.File
+import java.io.IOException
 import java.net.Socket
+import java.net.URI
+import java.net.URL
 
 class SharePlayController {
 
@@ -87,13 +90,23 @@ class SharePlayController {
         )
         Gadgets.saveConfig(config)
 
-        val mpv = MPV("D:\\mpv\\mpv.exe")
-        val socket = Socket(config.dirServer, 1234)
-
-        PlayerClient(socket, config.roomDefault ?: "", mpv)
+        val socket: Socket
+        try {
+            val url = URI(config.dirServer)
+            socket = Socket(url.host, url.port)
+        } catch (e: Exception) {
+            val alert = javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR)
+            alert.title = "Error de conexión"
+            alert.headerText = "No se pudo conectar con el servidor"
+            alert.contentText = "Comprueba que la dirección del servidor sea correcta y que esté en funcionamiento."
+            alert.showAndWait()
+            return
+        }
 
         val loader = javafx.fxml.FXMLLoader(javaClass.getResource("/roomShareplay.fxml"))
         val root = loader.load<javafx.scene.Parent>()
+        val controller = loader.getController<RoomSharePlayController>()
+        controller.initData(socket)
         val stage = Stage()
         stage.scene = javafx.scene.Scene(root)
         stage.isResizable = false
@@ -126,5 +139,13 @@ class SharePlayController {
         } else {
             true
         }
+    }
+
+    fun showAlert(title: String, message: String) {
+        val alert = Alert(Alert.AlertType.ERROR)
+        alert.title = title
+        alert.headerText = null
+        alert.contentText = message
+        alert.showAndWait()
     }
 }
