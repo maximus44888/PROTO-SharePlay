@@ -58,6 +58,11 @@
             <artifactId>kotlinx-coroutines-core</artifactId>
             <version>1.10.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.scala-sbt.ipcsocket</groupId>
+            <artifactId>ipcsocket</artifactId>
+            <version>1.6.3</version>
+        </dependency>
     </dependencies>
 
 </project>

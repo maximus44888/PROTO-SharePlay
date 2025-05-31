@@ -1,114 +1,88 @@
 package tfg.proto.shareplay
 
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.produce
-import java.io.DataInputStream
-import java.io.DataOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 val rooms = Rooms()
 
-fun main() = runBlocking {
-    val roomClients = roomClientProducer(clientSocketProducer())
-
-    for (roomClient in roomClients) {
-        launch {
-            val roomId = roomClient.getRoomId()
-
-            rooms.addIfAbsent(roomId).apply {
-                handleNewClient(roomClient)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun CoroutineScope.clientSocketProducer() = produce {
+suspend fun main() {
     ServerSocket(1234, 50, InetAddress.getByName("localhost")).use { serverSocket ->
-        println("Server started.")
+        println("Server started at ${serverSocket.inetAddress.hostAddress}:${serverSocket.localPort}")
         while (!serverSocket.isClosed) {
-            println("Waiting for client connection...")
-            val socket = withContext(Dispatchers.IO) {
-                serverSocket.accept()
-            }
-            println("Client connected.")
-            send(socket)
+            println("Waiting for new client...")
+            val socket = withContext(Dispatchers.IO) { serverSocket.accept() }
+            println("New client connected: ${socket.inetAddress.hostAddress}:${socket.port}")
+            CoroutineScope(Dispatchers.IO).launch { rooms.handleNewClient(Room.Client(socket)) }
         }
+        println("Closing server socket...")
     }
-    println("Server stopped.")
+    println("Server stopped")
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
-fun CoroutineScope.roomClientProducer(clientsSockets: ReceiveChannel<Socket>) = produce {
-    for (clientSocket in clientsSockets) send(Room.Client(clientSocket))
-}
-
-class Room(private val id: Int) {
+class Room(private val name: String) {
     private val clients = ConcurrentLinkedQueue<Client>()
+
+    init {
+        log("Room created")
+    }
 
     suspend fun handleNewClient(client: Client) {
         clients.add(client)
 
-        println("Client $client added to room $id. Total clients: ${clients.size}")
+        log("New client $client added. Total room clients: ${clients.size}")
 
-        //Notify the new client about the existing clients
-        clients.forEach {
-            if (it == client) return@forEach
-            client.sendMessage("Existing client: $it")
-        }
-
-        // Notify all clients in the room about the new client
-        clients.forEach {
-            if (it == client) return@forEach
-            it.sendMessage("New client joined: $client")
-        }
-
-        // Read messages from the client
         while (true) {
-            val message = client.readMessage()
-            println("Received message from $client: $message")
+            val networkEvent = client.readObject()
 
-            // Broadcast the message to all clients in the room
-            clients.forEach {
-                if (it == client) return@forEach
-                it.sendMessage("Message from $client: $message")
+            log("Client $client sent: $networkEvent")
+
+            clients.filterNot { it == client }.forEach {
+                it.sendObject(networkEvent)
             }
         }
     }
 
+    fun log(message: String) = println("[$name] $message")
+
     class Client(
         private val socket: Socket
     ) {
-        private val dataInputStream: DataInputStream = DataInputStream(socket.inputStream)
-        private val dataOutputStream: DataOutputStream = DataOutputStream(socket.outputStream)
+        private val objectInputStream = ObjectInputStream(socket.inputStream)
+        private val objectOutputStream = ObjectOutputStream(socket.outputStream)
 
-        suspend fun getRoomId(): Int {
-            return withContext(Dispatchers.IO) { dataInputStream.readInt() }
+        suspend fun readObject(): Any = withContext(Dispatchers.IO) { objectInputStream.readObject() }
+
+        internal fun sendObject(message: Any) {
+            objectOutputStream.writeObject(message)
+            objectOutputStream.flush()
         }
 
-        internal suspend fun readMessage(): String {
-            return withContext(Dispatchers.IO) { dataInputStream.readUTF() }
-        }
+        internal suspend fun readUTF() = withContext(Dispatchers.IO) { objectInputStream.readUTF() }
 
-        internal fun sendMessage(message: String) {
-            dataOutputStream.writeUTF(message)
-        }
-
-        override fun toString(): String {
-            return "${socket.inetAddress.hostAddress}:${socket.port}"
-        }
+        override fun toString() = "${socket.inetAddress.hostAddress}:${socket.port}"
     }
 }
 
 class Rooms {
-    private val rooms = ConcurrentHashMap<Int, Room>()
+    private val rooms = ConcurrentHashMap<String, Room>()
 
-    fun addIfAbsent(id: Int): Room {
-        return rooms.computeIfAbsent(id) { Room(id) }
+    private fun createRoomIfAbsent(name: String) = rooms.computeIfAbsent(name) { Room(name) }
+
+    suspend fun handleNewClient(client: Room.Client) {
+        val roomName = client.readUTF()
+
+        println("Client $client requested room: $roomName")
+
+        createRoomIfAbsent(roomName).apply { handleNewClient(client) }
     }
 }

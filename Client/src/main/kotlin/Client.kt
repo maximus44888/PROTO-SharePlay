@@ -1,44 +1,61 @@
 package tfg.proto.shareplay
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.net.InetAddress
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.net.Socket
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
-fun main() {
-    Socket(InetAddress.getByName("localhost"), 1235).use { socket ->
-        println("Connected to server at ${socket.inetAddress.hostAddress}:${socket.localPort}")
+const val mpvPath = "mpv"
 
-        DataInputStream(socket.inputStream).use { objectInputStream ->
-            DataOutputStream(socket.outputStream).use { objectOutputStream ->
-                val roomId = readln().toInt()
-                objectOutputStream.writeInt(roomId)
-                println("Asked to join room $roomId")
+suspend fun main() {
+    val player = MPV(mpvPath)
+    Socket("localhost", 1234).withObjectStreams { output, input ->
+        print("Insert room name: ")
+        output.writeUTF(readln())
+        output.flush()
 
-                runBlocking {
-                    launch {
-                        while (true) {
-                            val message = withContext(Dispatchers.IO) {
-                                objectInputStream.readUTF()
-                            }
-                            println("Received message: $message")
-                        }
-                    }
+        coroutineScope {
+            launch(Dispatchers.IO) {
+                player.loadedMediaEvents.collect {
+                    output.writeObject(NetworkEvent.MediaLoaded(it))
+                    output.flush()
+                }
+            }
+            launch(Dispatchers.IO) {
+                player.pauseEvents.collect {
+                    output.writeObject(NetworkEvent.Pause(it))
+                    output.flush()
+                }
+            }
+            launch(Dispatchers.IO) {
+                player.seekEvents.collect {
+                    output.writeObject(NetworkEvent.Seek(it))
+                    output.flush()
+                }
+            }
 
-                    launch {
-                        while (true) {
-                            val message = withContext(Dispatchers.IO) {
-                                readln()
-                            }
-                            objectOutputStream.writeUTF(message)
+            launch(Dispatchers.IO) {
+                while (true) {
+                    input.readObject().let { event ->
+                        when (event) {
+                            is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
+                            is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
+                            is NetworkEvent.Seek -> player.seek(event.time)
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+suspend fun Socket.withObjectStreams(block: suspend (ObjectOutputStream, ObjectInputStream) -> Unit) {
+    ObjectOutputStream(getOutputStream()).use { output ->
+        ObjectInputStream(getInputStream()).use { input ->
+            block(output, input)
         }
     }
 }
