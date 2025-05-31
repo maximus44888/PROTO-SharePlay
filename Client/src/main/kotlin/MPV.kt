@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.filter
@@ -43,6 +44,7 @@ import kotlin.concurrent.atomics.AtomicInt
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.fetchAndDecrement
 import kotlin.concurrent.atomics.fetchAndIncrement
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -53,6 +55,7 @@ import kotlin.uuid.Uuid
 class MPV(
     mpvPath: String
 ) : Player {
+    private val process: Process
     private val incoming: SharedFlow<JsonObject>
     private val pending = ConcurrentHashMap<Int, CompletableDeferred<JsonObject>>()
     private val execute: suspend IPC.Request.() -> JsonObject
@@ -64,7 +67,7 @@ class MPV(
         @OptIn(ExperimentalUuidApi::class)
         val pipePath = """\\.\pipe\shareplay\mpv\${Uuid.random()}"""
 
-        ProcessBuilder(
+        process = ProcessBuilder(
             mpvPath,
             "--input-ipc-server=$pipePath",
             "--force-window",
@@ -172,6 +175,11 @@ class MPV(
             .filterNot { shouldSkip(IPC.EventType.SEEK.value) }
             .mapNotNull { getPlaybackTime() }
             .shareIn(scope, SharingStarted.Eagerly, 0)
+    }
+
+    override fun close() {
+        process.destroy()
+        scope.cancel(CancellationException("MPV closed"))
     }
 
     object IPC {

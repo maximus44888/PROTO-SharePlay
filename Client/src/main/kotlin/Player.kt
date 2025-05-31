@@ -6,7 +6,7 @@ import kotlin.io.path.Path
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 
-interface Player {
+interface Player : AutoCloseable {
 
     companion object {
         fun buildURI(mediaPath: String) = runCatching { Path(mediaPath).toUri() }

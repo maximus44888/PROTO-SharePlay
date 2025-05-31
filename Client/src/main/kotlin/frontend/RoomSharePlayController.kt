@@ -1,7 +1,7 @@
 package tfg.proto.shareplay.frontend
 
+import java.net.Socket
 import javafx.fxml.FXMLLoader
-import javafx.fxml.Initializable
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.Button
@@ -12,9 +12,6 @@ import javafx.scene.input.ClipboardContent
 import javafx.stage.Stage
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
-import java.net.Socket
-import java.net.URL
-import java.util.ResourceBundle
 
 class RoomSharePlayController {
 
@@ -24,11 +21,13 @@ class RoomSharePlayController {
     lateinit var listRoomInfo: ListView<Any>
     lateinit var socket: Socket
 
+    private var playerClient: PlayerClient? = null
+
     fun initData(socket: Socket) {
         this.socket = socket
         val config = Gadgets.loadConfig()
-        val mpv = MPV("D:\\mpv\\mpv.exe")
-        PlayerClient(socket, config?.roomDefault ?: "", mpv)
+        val mpv = MPV("mpv")
+        playerClient = PlayerClient(socket, config?.roomDefault ?: "", mpv)
     }
 
     fun onCopyConfig() {
@@ -52,5 +51,9 @@ class RoomSharePlayController {
         stage.show()
 
         (OnClose.scene.window as Stage).close()
+        playerClient?.let {
+            it.close()
+            playerClient = null
+        }
     }
 }

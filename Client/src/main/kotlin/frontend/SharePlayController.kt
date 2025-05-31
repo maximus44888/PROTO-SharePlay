@@ -1,5 +1,8 @@
 package tfg.proto.shareplay.frontend
 
+import java.io.File
+import java.net.Socket
+import java.net.URI
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
@@ -7,13 +10,6 @@ import javafx.scene.control.Label
 import javafx.scene.control.TextField
 import javafx.stage.FileChooser
 import javafx.stage.Stage
-import tfg.proto.shareplay.MPV
-import tfg.proto.shareplay.PlayerClient
-import java.io.File
-import java.io.IOException
-import java.net.Socket
-import java.net.URI
-import java.net.URL
 
 class SharePlayController {
 
@@ -95,7 +91,7 @@ class SharePlayController {
             val url = URI(config.dirServer)
             socket = Socket(url.host, url.port)
         } catch (e: Exception) {
-            val alert = javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR)
+            val alert = Alert(Alert.AlertType.ERROR)
             alert.title = "Error de conexión"
             alert.headerText = "No se pudo conectar con el servidor"
             alert.contentText = "Comprueba que la dirección del servidor sea correcta y que esté en funcionamiento."
