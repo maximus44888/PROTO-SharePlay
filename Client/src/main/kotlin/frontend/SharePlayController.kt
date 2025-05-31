@@ -7,7 +7,10 @@ import javafx.scene.control.Label
 import javafx.scene.control.TextField
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import tfg.proto.shareplay.MPV
+import tfg.proto.shareplay.PlayerClient
 import java.io.File
+import java.net.Socket
 
 class SharePlayController {
 
@@ -83,6 +86,11 @@ class SharePlayController {
             roomDefault = roomDefaultField.text,
         )
         Gadgets.saveConfig(config)
+
+        val mpv = MPV("D:\\mpv\\mpv.exe")
+        val socket = Socket(config.dirServer, 1234)
+
+        PlayerClient(socket, config.roomDefault ?: "", mpv)
 
         val loader = javafx.fxml.FXMLLoader(javaClass.getResource("/roomShareplay.fxml"))
         val root = loader.load<javafx.scene.Parent>()
