@@ -13,41 +13,40 @@ class PlayerClient(
     private val roomName: String,
     private val player: Player,
 ) {
+    private val output = ObjectOutputStream(socket.getOutputStream())
+    private val input = ObjectInputStream(socket.getInputStream())
+
     init {
-        ObjectOutputStream(socket.getOutputStream()).use { output ->
-            ObjectInputStream(socket.getInputStream()).use { input ->
-                output.writeUTF(roomName)
-                output.flush()
+        output.writeUTF(roomName)
+        output.flush()
 
-                CoroutineScope(Dispatchers.IO).launch {
-                    launch(Dispatchers.IO) {
-                        player.loadedMediaEvents.collect {
-                            output.writeObject(NetworkEvent.MediaLoaded(it))
-                            output.flush()
-                        }
-                    }
-                    launch(Dispatchers.IO) {
-                        player.pauseEvents.collect {
-                            output.writeObject(NetworkEvent.Pause(it))
-                            output.flush()
-                        }
-                    }
-                    launch(Dispatchers.IO) {
-                        player.seekEvents.collect {
-                            output.writeObject(NetworkEvent.Seek(it))
-                            output.flush()
-                        }
-                    }
+        CoroutineScope(Dispatchers.IO).launch {
+            launch(Dispatchers.IO) {
+                player.loadedMediaEvents.collect {
+                    output.writeObject(NetworkEvent.MediaLoaded(it))
+                    output.flush()
+                }
+            }
+            launch(Dispatchers.IO) {
+                player.pauseEvents.collect {
+                    output.writeObject(NetworkEvent.Pause(it))
+                    output.flush()
+                }
+            }
+            launch(Dispatchers.IO) {
+                player.seekEvents.collect {
+                    output.writeObject(NetworkEvent.Seek(it))
+                    output.flush()
+                }
+            }
 
-                    launch(Dispatchers.IO) {
-                        while (true) {
-                            input.readObject().let { event ->
-                                when (event) {
-                                    is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
-                                    is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
-                                    is NetworkEvent.Seek -> player.seek(event.time)
-                                }
-                            }
+            launch(Dispatchers.IO) {
+                while (true) {
+                    input.readObject().let { event ->
+                        when (event) {
+                            is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
+                            is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
+                            is NetworkEvent.Seek -> player.seek(event.time)
                         }
                     }
                 }
