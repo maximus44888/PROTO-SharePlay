@@ -9,37 +9,20 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 val rooms = Rooms()
 
-suspend fun main() = coroutineScope {
-    val newClients = newClientsProducer()
-
-    newClients.consumeEach { newClient ->
-        launch {
-            rooms.handleNewClient(newClient)
-        }
-    }
-}
-
-@OptIn(ExperimentalCoroutinesApi::class)
-fun CoroutineScope.newClientsProducer() = produce {
+suspend fun main() {
     ServerSocket(1234, 50, InetAddress.getByName("localhost")).use { serverSocket ->
         println("Server started at ${serverSocket.inetAddress.hostAddress}:${serverSocket.localPort}")
         while (!serverSocket.isClosed) {
             println("Waiting for new client...")
-            val socket = withContext(Dispatchers.IO) {
-                serverSocket.accept()
-            }
+            val socket = withContext(Dispatchers.IO) { serverSocket.accept() }
             println("New client connected: ${socket.inetAddress.hostAddress}:${socket.port}")
-            send(Room.Client(socket))
+            CoroutineScope(Dispatchers.IO).launch { rooms.handleNewClient(Room.Client(socket)) }
         }
         println("Closing server socket...")
     }
@@ -69,9 +52,7 @@ class Room(private val name: String) {
         }
     }
 
-    fun log(message: String) {
-        println("[$name] $message")
-    }
+    fun log(message: String) = println("[$name] $message")
 
     class Client(
         private val socket: Socket
@@ -81,7 +62,10 @@ class Room(private val name: String) {
 
         suspend fun readObject(): Any = withContext(Dispatchers.IO) { objectInputStream.readObject() }
 
-        internal fun sendObject(message: Any) = objectOutputStream.writeObject(message)
+        internal fun sendObject(message: Any) {
+            objectOutputStream.writeObject(message)
+            objectOutputStream.flush()
+        }
 
         internal suspend fun readUTF() = withContext(Dispatchers.IO) { objectInputStream.readUTF() }
 
@@ -92,13 +76,13 @@ class Room(private val name: String) {
 class Rooms {
     private val rooms = ConcurrentHashMap<String, Room>()
 
-    fun createRoomIfAbsent(name: String) = rooms.computeIfAbsent(name) { Room(name) }
+    private fun createRoomIfAbsent(name: String) = rooms.computeIfAbsent(name) { Room(name) }
 
     suspend fun handleNewClient(client: Room.Client) {
         val roomName = client.readUTF()
 
-        createRoomIfAbsent(roomName).apply {
-            handleNewClient(client)
-        }
+        println("Client $client requested room: $roomName")
+
+        createRoomIfAbsent(roomName).apply { handleNewClient(client) }
     }
 }
