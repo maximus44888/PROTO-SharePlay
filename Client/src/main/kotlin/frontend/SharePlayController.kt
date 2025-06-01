@@ -65,6 +65,7 @@ class SharePlayController {
 
         serverPathComboBox.editor.text = server
         roomDefaultField.text = room
+        configurationCopied.text = ""
     }
 
     fun onResetConfig() {
