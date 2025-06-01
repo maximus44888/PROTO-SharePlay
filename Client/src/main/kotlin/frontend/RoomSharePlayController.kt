@@ -1,5 +1,7 @@
 package tfg.proto.shareplay.frontend
 
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
 import java.io.File
 import java.io.FileOutputStream
 import java.net.Socket
@@ -16,20 +18,25 @@ import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
 
 class RoomSharePlayController {
-
     lateinit var labelTitle: Label
     lateinit var onCopyConfig: Button
     lateinit var onClose: Button
     lateinit var listRoomInfo: ListView<Any>
     lateinit var socket: Socket
     private var playerClient: PlayerClient? = null
+    private val roomInfoItems: ObservableList<String> = FXCollections.observableArrayList()
 
     fun initData(socket: Socket) {
         this.socket = socket
         val config = Gadgets.loadConfig()
+        val roomName = config?.roomDefault ?: "Desconocida"
+        labelTitle.text = "Sala $roomName"
         val mpvPath = extractAndRunMPV()
         val mpv = MPV(mpvPath)
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", config?.nickname ?: "", mpv)
+        @Suppress("UNCHECKED_CAST")
+        listRoomInfo.items = roomInfoItems as ObservableList<Any>
+        startRoomInfoUpdater()
     }
 
     fun onCopyConfig() {
@@ -72,5 +79,21 @@ class RoomSharePlayController {
             }
         }
         return tempFile.absolutePath
+    }
+    private fun startRoomInfoUpdater() {
+        val thread = Thread {
+            while (playerClient != null) {
+                val clientsList = playerClient?.clients ?: emptyList()
+
+                javafx.application.Platform.runLater {
+                    roomInfoItems.setAll(clientsList)
+                }
+
+                Thread.sleep(100)
+            }
+        }
+
+        thread.isDaemon = true
+        thread.start()
     }
 }
