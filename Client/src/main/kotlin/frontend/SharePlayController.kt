@@ -76,7 +76,7 @@ class SharePlayController {
         configurationCopied.text = ""
     }
 
-    fun OnPlaySharePlay() {
+    fun onPlaySharePlay() {
         if (!validateRequiredFields()) return
 
         val config = GadgetConfig(
@@ -135,13 +135,5 @@ class SharePlayController {
         } else {
             true
         }
-    }
-
-    fun showAlert(title: String, message: String) {
-        val alert = Alert(Alert.AlertType.ERROR)
-        alert.title = title
-        alert.headerText = null
-        alert.contentText = message
-        alert.showAndWait()
     }
 }

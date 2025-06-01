@@ -20,7 +20,7 @@
                 </font>
             </Label>
             <ListView fx:id="listRoomInfo" layoutX="22.0" layoutY="53.0" prefHeight="258.0" prefWidth="468.0" />
-            <Button fx:id="OnClose" layoutX="290.0" layoutY="322.0" mnemonicParsing="false" onAction="#OnClose" prefHeight="25.0" prefWidth="200.0" text="Volver" />
+            <Button fx:id="onClose" layoutX="290.0" layoutY="322.0" mnemonicParsing="false" onAction="#onClose" prefHeight="25.0" prefWidth="200.0" text="Volver" />
             <Button fx:id="onCopyConfig" layoutX="22.0" layoutY="322.0" mnemonicParsing="false" onAction="#onCopyConfig" prefHeight="25.0" prefWidth="200.0" text="Copiar conexión" />
         </children>
     </Pane>

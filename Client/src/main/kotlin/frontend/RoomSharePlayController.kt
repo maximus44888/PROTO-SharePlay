@@ -17,16 +17,15 @@ class RoomSharePlayController {
 
     lateinit var labelTitle: Label
     lateinit var onCopyConfig: Button
-    lateinit var OnClose: Button
+    lateinit var onClose: Button
     lateinit var listRoomInfo: ListView<Any>
     lateinit var socket: Socket
-
     private var playerClient: PlayerClient? = null
 
     fun initData(socket: Socket) {
         this.socket = socket
         val config = Gadgets.loadConfig()
-        val mpv = MPV("mpv")
+        val mpv = MPV("D:\\mpv\\mpv.exe")
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", mpv)
     }
 
@@ -41,7 +40,7 @@ class RoomSharePlayController {
         }
     }
 
-    fun OnClose() {
+    fun onClose() {
         val loader = FXMLLoader(javaClass.getResource("/sharePlay.fxml"))
         val root: Parent = loader.load()
         val stage = Stage()
@@ -50,7 +49,7 @@ class RoomSharePlayController {
         stage.scene = Scene(root)
         stage.show()
 
-        (OnClose.scene.window as Stage).close()
+        (onClose.scene.window as Stage).close()
         playerClient?.let {
             it.close()
             playerClient = null
