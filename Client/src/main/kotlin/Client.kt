@@ -18,6 +18,7 @@ class PlayerClient(
     private val nickName: String,
     private val player: Player,
 ) : AutoCloseable {
+    public val clients = mutableListOf<String>()
     private val output = ObjectOutputStream(socket.getOutputStream())
     private val input = ObjectInputStream(socket.getInputStream())
     private val playerScope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
@@ -57,8 +58,8 @@ class PlayerClient(
                                 is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
                                 is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
                                 is NetworkEvent.Seek -> player.seek(event.time)
-                                is NetworkEvent.NewClient -> println("${event.nickName} joined the room")
-                                is NetworkEvent.ClientLeft -> println("${event.nickName} left the room")
+                                is NetworkEvent.NewClient -> clients.add(event.nickName)
+                                is NetworkEvent.ClientLeft -> clients.remove(event.nickName)
                             }
                         }
                     }
