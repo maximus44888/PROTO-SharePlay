@@ -57,7 +57,8 @@ class PlayerClient(
                                 is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
                                 is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
                                 is NetworkEvent.Seek -> player.seek(event.time)
-                                is String -> println(event)
+                                is NetworkEvent.NewClient -> println("${event.nickName} joined the room")
+                                is NetworkEvent.ClientLeft -> println("${event.nickName} left the room")
                             }
                         }
                     }

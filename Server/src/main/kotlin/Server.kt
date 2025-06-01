@@ -43,8 +43,8 @@ class Room(private val name: String) {
         log("New client $client added. Total room clients: ${clients.size}")
 
         clients.filterNot { it == client }.forEach {
-            it.sendObject(client.nickName)
-            client.sendObject(it.nickName)
+            it.sendObject(NetworkEvent.NewClient(client.nickName))
+            client.sendObject(NetworkEvent.NewClient(it.nickName))
         }
 
         try {
@@ -60,6 +60,7 @@ class Room(private val name: String) {
         } catch (e: IOException) {
             log("Client $client disconnected")
             clients.remove(client)
+            clients.forEach { it.sendObject(NetworkEvent.ClientLeft(client.nickName)) }
             log("Total room clients: ${clients.size}")
         }
     }

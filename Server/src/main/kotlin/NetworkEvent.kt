@@ -8,4 +8,6 @@ sealed class NetworkEvent : Serializable {
     data class MediaLoaded(val mediaURI: URI) : NetworkEvent()
     data class Pause(val paused: Boolean) : NetworkEvent()
     data class Seek(val time: Duration) : NetworkEvent()
+    data class NewClient(val nickName: String) : NetworkEvent()
+    data class ClientLeft(val nickName: String) : NetworkEvent()
 }
