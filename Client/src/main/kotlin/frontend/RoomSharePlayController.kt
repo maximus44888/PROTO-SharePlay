@@ -12,6 +12,8 @@ import javafx.scene.input.ClipboardContent
 import javafx.stage.Stage
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
+import java.io.File
+import java.io.FileOutputStream
 
 class RoomSharePlayController {
 
@@ -25,7 +27,8 @@ class RoomSharePlayController {
     fun initData(socket: Socket) {
         this.socket = socket
         val config = Gadgets.loadConfig()
-        val mpv = MPV("D:\\mpv\\mpv.exe")
+        val mpvPath = extractAndRunMPV()
+        val mpv = MPV(mpvPath)
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", mpv)
     }
 
@@ -54,5 +57,20 @@ class RoomSharePlayController {
             it.close()
             playerClient = null
         }
+    }
+
+    fun extractAndRunMPV(): String {
+        val mpvResource = this::class.java.getResourceAsStream("/mpv/mpv.exe")
+            ?: throw IllegalStateException("No se encontró mpv.exe en los recursos")
+
+        val tempFile = File.createTempFile("mpv", ".exe")
+        tempFile.deleteOnExit()
+
+        mpvResource.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        return tempFile.absolutePath
     }
 }
