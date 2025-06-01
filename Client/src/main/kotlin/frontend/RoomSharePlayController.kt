@@ -1,10 +1,10 @@
 package tfg.proto.shareplay.frontend
 
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
 import java.io.File
 import java.io.FileOutputStream
 import java.net.Socket
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.Scene
@@ -51,7 +51,7 @@ class RoomSharePlayController {
     }
 
     fun onClose() {
-        val loader = FXMLLoader(javaClass.getResource("/sharePlay.fxml"))
+        val loader = FXMLLoader(javaClass.getResource("/frontend/sharePlay.fxml"))
         val root: Parent = loader.load()
         val stage = Stage()
         stage.title = "SharePlay"
@@ -80,6 +80,7 @@ class RoomSharePlayController {
         }
         return tempFile.absolutePath
     }
+
     private fun startRoomInfoUpdater() {
         val thread = Thread {
             while (playerClient != null) {

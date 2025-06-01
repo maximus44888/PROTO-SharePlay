@@ -3,6 +3,8 @@ package tfg.proto.shareplay.frontend
 import java.io.File
 import java.net.Socket
 import java.net.URI
+import javafx.fxml.FXMLLoader
+import javafx.scene.Scene
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
@@ -89,9 +91,9 @@ class SharePlayController {
 
         val socket: Socket
         try {
-            val url = URI(config.dirServer)
+            val url = URI(config.dirServer!!)
             socket = Socket(url.host, url.port)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             val alert = Alert(Alert.AlertType.ERROR)
             alert.title = "Error de conexión"
             alert.headerText = "No se pudo conectar con el servidor"
@@ -100,12 +102,12 @@ class SharePlayController {
             return
         }
 
-        val loader = javafx.fxml.FXMLLoader(javaClass.getResource("/roomShareplay.fxml"))
-        val root = loader.load<javafx.scene.Parent>()
+        val loader = FXMLLoader(SharePlayController::class.java.getResource("/frontend/roomSharePlay.fxml"))
+        val scene = Scene(loader.load())
         val controller = loader.getController<RoomSharePlayController>()
         controller.initData(socket)
         val stage = Stage()
-        stage.scene = javafx.scene.Scene(root)
+        stage.scene = scene
         stage.isResizable = false
         stage.title = "SharePlay"
         stage.show()
