@@ -25,8 +25,8 @@ class SharePlayController {
     fun initialize() {
         serverPathComboBox.isEditable = true
         serverPathComboBox.items.addAll(
-            "http://192.168.1.189:4570",
-            "http://192.168.1.10:5000"
+            "https://45.149.118.37:1234",
+            "https://192.168.1.10:5000"
         )
         val config = Gadgets.loadConfig()
         if (config != null) {
