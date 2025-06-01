@@ -72,6 +72,16 @@ class PlayerClient(
         }
     }
 
+    fun loadMedia(mediaPath: String) {
+        val mediaURI = Player.buildURI(mediaPath) ?:
+            throw IllegalArgumentException("Invalid media path: $mediaPath")
+        playerScope.launch {
+            player.loadMedia(mediaURI)
+            output.writeObject(NetworkEvent.MediaLoaded(mediaURI))
+            output.flush()
+        }
+    }
+
     override fun close() {
         playerScope.cancel(CancellationException("PlayerClient closed"))
         player.close()
