@@ -1,5 +1,6 @@
 package tfg.proto.shareplay
 
+import java.io.IOException
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.net.InetAddress
@@ -12,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
 
 val rooms = Rooms()
 
@@ -42,6 +42,11 @@ class Room(private val name: String) {
 
         log("New client $client added. Total room clients: ${clients.size}")
 
+        clients.filterNot { it == client }.forEach {
+            it.sendObject(client.nickName)
+            client.sendObject(it.nickName)
+        }
+
         try {
             while (true) {
                 val networkEvent = client.readObject()
@@ -64,8 +69,13 @@ class Room(private val name: String) {
     class Client(
         private val socket: Socket
     ) {
+        val nickName: String
         private val objectInputStream = ObjectInputStream(socket.inputStream)
         private val objectOutputStream = ObjectOutputStream(socket.outputStream)
+
+        init {
+            nickName = objectInputStream.readUTF()
+        }
 
         suspend fun readObject(): Any = withContext(Dispatchers.IO) { objectInputStream.readObject() }
 
@@ -85,11 +95,11 @@ class Rooms {
 
     private fun createRoomIfAbsent(name: String) = rooms.computeIfAbsent(name) { Room(name) }
 
-    suspend fun handleNewClient(client: Room.Client) {
-        val roomName = client.readUTF()
+    suspend fun handleNewClient(socket: Room.Client) {
+        val roomName = socket.readUTF()
 
-        println("Client $client requested room: $roomName")
+        println("Client $socket requested room: $roomName")
 
-        createRoomIfAbsent(roomName).apply { handleNewClient(client) }
+        createRoomIfAbsent(roomName).apply { handleNewClient(socket) }
     }
 }

@@ -15,6 +15,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class PlayerClient(
     private val socket: Socket,
     private val roomName: String,
+    private val nickName: String,
     private val player: Player,
 ) : AutoCloseable {
     private val output = ObjectOutputStream(socket.getOutputStream())
@@ -23,6 +24,9 @@ class PlayerClient(
 
     init {
         try {
+            output.writeUTF(nickName)
+            output.flush()
+
             output.writeUTF(roomName)
             output.flush()
 
@@ -53,6 +57,7 @@ class PlayerClient(
                                 is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
                                 is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
                                 is NetworkEvent.Seek -> player.seek(event.time)
+                                is String -> println(event)
                             }
                         }
                     }

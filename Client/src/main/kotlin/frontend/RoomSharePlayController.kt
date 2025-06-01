@@ -1,5 +1,7 @@
 package tfg.proto.shareplay.frontend
 
+import java.io.File
+import java.io.FileOutputStream
 import java.net.Socket
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
@@ -12,8 +14,6 @@ import javafx.scene.input.ClipboardContent
 import javafx.stage.Stage
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
-import java.io.File
-import java.io.FileOutputStream
 
 class RoomSharePlayController {
 
@@ -29,7 +29,7 @@ class RoomSharePlayController {
         val config = Gadgets.loadConfig()
         val mpvPath = extractAndRunMPV()
         val mpv = MPV(mpvPath)
-        playerClient = PlayerClient(socket, config?.roomDefault ?: "", mpv)
+        playerClient = PlayerClient(socket, config?.roomDefault ?: "", config?.nickname ?: "", mpv)
     }
 
     fun onCopyConfig() {
