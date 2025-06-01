@@ -22,19 +22,16 @@ class RoomSharePlayController {
     lateinit var onCopyConfig: Button
     lateinit var onClose: Button
     lateinit var listRoomInfo: ListView<String>
-    lateinit var socket: Socket
     private var playerClient: PlayerClient? = null
     private val roomInfoItems: ObservableList<String> = FXCollections.observableArrayList()
 
     fun initData(socket: Socket) {
-        this.socket = socket
         val config = Gadgets.loadConfig()
         val roomName = config?.roomDefault ?: "Desconocida"
         labelTitle.text = "Sala $roomName"
         val mpvPath = extractAndRunMPV()
         val mpv = MPV(mpvPath)
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", config?.nickname ?: "", mpv)
-        @Suppress("UNCHECKED_CAST")
         listRoomInfo.items = roomInfoItems
         startRoomInfoUpdater()
     }
