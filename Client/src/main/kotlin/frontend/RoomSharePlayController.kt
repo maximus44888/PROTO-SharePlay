@@ -34,7 +34,7 @@ class RoomSharePlayController {
     lateinit var onClose: Button
 
     /** ListView que muestra la lista de integrantes de la sala. */
-    lateinit var listRoomInfo: ListView<Any>
+    lateinit var listRoomInfo: ListView<String>
 
     /** Socket de conexión con el servidor. */
     lateinit var socket: Socket
@@ -69,11 +69,11 @@ class RoomSharePlayController {
         val mpvPath = extractAndRunMPV()
         val mpv = MPV(mpvPath)
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", config?.nickname ?: "", mpv)
+        listRoomInfo.items = roomInfoItems
         if (filePath.isNotBlank()) {
             playerClient?.loadMedia(filePath)
         }
         @Suppress("UNCHECKED_CAST")
-        listRoomInfo.items = roomInfoItems as ObservableList<Any>
         startRoomInfoUpdater()
     }
 
