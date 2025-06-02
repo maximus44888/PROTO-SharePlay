@@ -5,6 +5,7 @@ import java.net.Socket
 import java.net.URI
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
+import java.util.Base64
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
@@ -99,21 +100,35 @@ class SharePlayController {
 
     /**
      * Procesa la configuración pegada en [configurationCopied].
-     * Espera el formato "direcciónServidor|sala".
-     * Si el formato es correcto, actualiza los campos del formulario con los valores correspondientes.
-     * En caso de error, muestra una alerta indicando el problema.
+     * Espera una cadena codificada en Base64 con el formato original "direcciónServidor|sala".
+     * Decodifica el contenido y, si el formato es correcto, actualiza los campos del formulario.
+     * En caso de error de decodificación o formato inválido, muestra una alerta indicando que el código es erróneo.
      */
     fun onUploadConfig() {
         val input = configurationCopied.text.trim()
-        val parts = input.split("|")
-        if (parts.size < 2 || parts[0].isBlank() || parts[1].isBlank()) {
+        val decodedText: String
+
+        try {
+            decodedText = String(Base64.getDecoder().decode(input), Charsets.UTF_8)
+        } catch (e: IllegalArgumentException) {
             val alert = Alert(Alert.AlertType.ERROR)
-            alert.title = "Formato no válido"
-            alert.headerText = "Configuración no válida"
-            alert.contentText = "El formato debe ser: direcciónServidor|sala"
+            alert.title = "Código erróneo"
+            alert.headerText = "No se pudo procesar la configuración"
+            alert.contentText = "El código pegado no es válido o ha sido alterado."
             alert.showAndWait()
             return
         }
+
+        val parts = decodedText.split("|")
+        if (parts.size < 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            val alert = Alert(Alert.AlertType.ERROR)
+            alert.title = "Código erróneo"
+            alert.headerText = "No se pudo procesar la configuración"
+            alert.contentText = "El código pegado no es válido o ha sido alterado."
+            alert.showAndWait()
+            return
+        }
+
         val server = parts.dropLast(1).joinToString("|")
         val room = parts.last()
 

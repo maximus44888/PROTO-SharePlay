@@ -7,6 +7,7 @@ import java.io.FileOutputStream
 import java.net.Socket
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
+import java.util.Base64
 import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.scene.control.Label
@@ -79,16 +80,19 @@ class RoomSharePlayController {
 
 
     /**
-     * Copia al portapapeles la configuración actual en formato "direcciónServidor|sala".
+     * Copia al portapapeles la configuración actual codificada en Base64.
+     * La información original tiene el formato "direcciónServidor|sala".
      * Si no existe configuración, no realiza ninguna acción.
      */
     fun onCopyConfig() {
         val config = Gadgets.loadConfig()
         if (config != null) {
-            val textToCopy = "${config.dirServer}|${config.roomDefault}"
+            val plainText = "${config.dirServer}|${config.roomDefault}"
+            val encodedText = Base64.getEncoder().encodeToString(plainText.toByteArray(Charsets.UTF_8))
+
             val clipboard = Clipboard.getSystemClipboard()
             val content = ClipboardContent()
-            content.putString(textToCopy)
+            content.putString(encodedText)
             clipboard.setContent(content)
         }
     }
