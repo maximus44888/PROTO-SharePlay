@@ -33,12 +33,6 @@ class PlayerClient(
 
             playerScope.launch {
                 launch(Dispatchers.IO) {
-                    player.loadedMediaEvents.collect {
-                        output.writeObject(NetworkEvent.MediaLoaded(it))
-                        output.flush()
-                    }
-                }
-                launch(Dispatchers.IO) {
                     player.pauseEvents.collect {
                         output.writeObject(NetworkEvent.Pause(it))
                         output.flush()
@@ -55,7 +49,6 @@ class PlayerClient(
                     while (true) {
                         input.readObject().let { event ->
                             when (event) {
-                                is NetworkEvent.MediaLoaded -> player.loadMedia(event.mediaURI)
                                 is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
                                 is NetworkEvent.Seek -> player.seek(event.time)
                                 is NetworkEvent.NewClient -> clients.add(event.nickName)
