@@ -110,3 +110,28 @@
     -fx-text-fill: #1a73e8;
 }
 
+.text-field:focused {
+    -fx-border-color: #1a73e8;
+}
+
+.combo-box:focused,
+.combo-box .combo-box-base:focused {
+    -fx-border-color: #1a73e8;
+}
+
+.combo-box .text-input:focused {
+    -fx-border-color: #1a73e8;
+}
+
+.button:focused {
+    -fx-border-color: #1a73e8;
+    -fx-border-width: 2px;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(one-pass-box, rgba(26, 115, 232, 0.3), 4, 0.3, 0, 0);
+}
+
+.text-field.error,
+.combo-box-base.error {
+    -fx-border-color: red;
+    -fx-border-width: 2px;
+}

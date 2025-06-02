@@ -4,16 +4,36 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.nio.file.Paths
 
+/**
+ * Data class que representa la configuración del usuario para SharePlay.
+ *
+ * @property dirServer La dirección del servidor (URL o IP).
+ * @property nickname El apodo o nombre de usuario.
+ * @property roomDefault La sala por defecto para conectarse.
+ */
 data class GadgetConfig(
     val dirServer: String?,
     val nickname: String?,
     val roomDefault: String?
 )
 
+/**
+ * Objeto singleton que gestiona la carga, guardado y reseteo
+ * de la configuración persistente de SharePlay.
+ */
 object Gadgets {
+    /** Instancia del ObjectMapper de Jackson para serialización/deserialización JSON */
     private val mapper = jacksonObjectMapper()
+
+    /** Archivo donde se guarda la configuración en el directorio home del usuario */
     private val file = Paths.get(System.getProperty("user.home"), ".sharePlayData.json").toFile()
 
+    /**
+     * Carga la configuración guardada desde el archivo JSON.
+     *
+     * @return Un objeto [GadgetConfig] con la configuración cargada,
+     * o `null` si el archivo no existe o hubo un error durante la carga.
+     */
     fun loadConfig(): GadgetConfig? {
         if (!file.exists()) return null
         return try {
@@ -24,6 +44,11 @@ object Gadgets {
         }
     }
 
+    /**
+     * Guarda la configuración proporcionada en un archivo JSON en disco.
+     *
+     * @param config La configuración a guardar.
+     */
     fun saveConfig(config: GadgetConfig) {
         try {
             file.parentFile?.mkdirs()
@@ -33,6 +58,9 @@ object Gadgets {
         }
     }
 
+    /**
+     * Elimina la configuración guardada, reseteando la configuración a su estado inicial.
+     */
     fun resetConfig() {
         if (file.exists()) {
             file.delete()

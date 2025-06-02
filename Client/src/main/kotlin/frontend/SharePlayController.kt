@@ -13,17 +13,45 @@ import javafx.scene.control.TextField
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 
+/**
+ * Controlador para la ventana principal de SharePlay.
+ * Permite configurar la conexión al servidor, seleccionar archivo de video,
+ * gestionar configuración guardada y lanzar la conexión a la sala compartida.
+ */
 class SharePlayController {
 
+    /** Etiqueta que muestra el título o encabezado principal de la ventana. */
     lateinit var labelTitle: Label
+
+    /** Campo de texto para pegar o mostrar la configuración en formato "servidor|sala". */
     lateinit var configurationCopied: TextField
+
+    /** Botón que valida y procesa la configuración pegada en [configurationCopied]. */
     lateinit var validateConfig: Button
+
+    /** Campo de texto que muestra la ruta del archivo de video seleccionado. */
     lateinit var filePathField: TextField
+
+    /** Campo de texto para ingresar o mostrar la sala por defecto. */
     lateinit var roomDefaultField: TextField
+
+    /** Campo de texto para ingresar o mostrar el nombre de usuario (nickname) que se utilizará en la sala. */
     lateinit var nickNameField: TextField
+
+    /** Campo editable tipo ComboBox para seleccionar o ingresar la dirección del servidor. */
     lateinit var serverPathComboBox: ComboBox<Any>
+
+    /** Botón que abre el explorador de archivos para seleccionar un archivo de video. */
     lateinit var onBrowserFile: Button
 
+    /**
+     * Inicializa el controlador.
+     * - Configura el ComboBox del servidor como editable.
+     * - Añade direcciones de servidor predefinidas al ComboBox.
+     * - Carga la configuración guardada previamente y la muestra en los campos correspondientes.
+     * - Añade listeners a los campos de texto y al editor del ComboBox para eliminar
+     *   la clase CSS "error" cuando el usuario ingresa un valor no vacío.
+     */
     fun initialize() {
         serverPathComboBox.isEditable = true
         serverPathComboBox.items.addAll(
@@ -36,8 +64,26 @@ class SharePlayController {
             nickNameField.text = config.nickname ?: ""
             roomDefaultField.text = config.roomDefault ?: ""
         }
+
+        listOf(nickNameField, roomDefaultField).forEach { field ->
+            field.textProperty().addListener { _, _, newValue ->
+                if (!newValue.isNullOrBlank()) {
+                    field.styleClass.remove("error")
+                }
+            }
+        }
+
+        serverPathComboBox.editor.textProperty().addListener { _, _, newValue ->
+            if (!newValue.isNullOrBlank()) {
+                serverPathComboBox.styleClass.remove("error")
+            }
+        }
     }
 
+    /**
+     * Abre un diálogo de selección de archivo para elegir un video con extensiones mp4, mkv o avi.
+     * Si se selecciona un archivo, su ruta se asigna al campo [filePathField].
+     */
     fun onBrowserFile() {
         val fileChooser = FileChooser()
         fileChooser.title = "Seleccionar archivo de video"
@@ -51,6 +97,12 @@ class SharePlayController {
         }
     }
 
+    /**
+     * Procesa la configuración pegada en [configurationCopied].
+     * Espera el formato "direcciónServidor|sala".
+     * Si el formato es correcto, actualiza los campos del formulario con los valores correspondientes.
+     * En caso de error, muestra una alerta indicando el problema.
+     */
     fun onUploadConfig() {
         val input = configurationCopied.text.trim()
         val parts = input.split("|")
@@ -70,6 +122,10 @@ class SharePlayController {
         configurationCopied.text = ""
     }
 
+    /**
+     * Restablece la configuración guardada mediante [Gadgets.resetConfig].
+     * Además, limpia todos los campos del formulario para que queden vacíos.
+     */
     fun onResetConfig() {
         Gadgets.resetConfig()
 
@@ -79,6 +135,24 @@ class SharePlayController {
         configurationCopied.text = ""
     }
 
+    /**
+     * Valida los campos obligatorios del formulario, guarda la configuración actual,
+     * intenta establecer una conexión con el servidor y, si tiene éxito,
+     * abre la ventana de la sala compartida.
+     *
+     * Acciones realizadas:
+     * - Comprueba que los campos requeridos (servidor, nickname, sala) no estén vacíos.
+     * - Guarda la configuración actual en el archivo local.
+     * - Intenta crear un socket TCP con la dirección del servidor proporcionado.
+     * - Si falla la conexión, muestra una alerta informativa al usuario.
+     * - Si la conexión es exitosa:
+     *    - Carga la vista de la sala (roomSharePlay.fxml).
+     *    - Inicializa el controlador de la sala con el socket y el archivo de video, si ha sido seleccionado.
+     *    - Abre la ventana de la sala.
+     *    - Cierra la ventana actual.
+     *
+     * Nota: El archivo de video solo se carga automáticamente si el campo de ruta no está vacío.
+     */
     fun onPlaySharePlay() {
         if (!validateRequiredFields()) return
 
@@ -89,6 +163,7 @@ class SharePlayController {
         )
         Gadgets.saveConfig(config)
 
+        val filePath = filePathField.text
         val socket: Socket
         try {
             val url = URI(config.dirServer!!)
@@ -105,7 +180,7 @@ class SharePlayController {
         val loader = FXMLLoader(SharePlayController::class.java.getResource("/frontend/roomSharePlay.fxml"))
         val scene = Scene(loader.load())
         val controller = loader.getController<RoomSharePlayController>()
-        controller.initData(socket)
+        controller.initData(socket, filePath)
         val stage = Stage()
         stage.scene = scene
         stage.isResizable = false
@@ -115,28 +190,49 @@ class SharePlayController {
         (onBrowserFile.scene.window as Stage).close()
     }
 
+
+    /**
+     * Valida que todos los campos obligatorios del formulario tengan valores no vacíos.
+     *
+     * Acciones que realiza:
+     * - Elimina estilos de error previos en los campos requeridos.
+     * - Comprueba si cada campo obligatorio (servidor, nickname, sala) está vacío o en blanco.
+     * - Si un campo está vacío:
+     *     - Se añade un estilo CSS "error" para resaltarlo visualmente.
+     *     - Se actualiza su `promptText` para mostrar "Campo requerido".
+     *
+     * No se muestran alertas emergentes, sino que se proporciona retroalimentación visual directa
+     * en los propios campos del formulario.
+     *
+     * @return `true` si todos los campos obligatorios están correctamente rellenados,
+     *         `false` si falta alguno.
+     */
     private fun validateRequiredFields(): Boolean {
-        val missingFields = mutableListOf<String>()
+        var allValid = true
+
+        serverPathComboBox.styleClass.remove("error")
+        nickNameField.styleClass.remove("error")
+        roomDefaultField.styleClass.remove("error")
 
         if (serverPathComboBox.editor.text.isNullOrBlank()) {
-            missingFields.add("Dirección del servidor")
-        }
-        if (nickNameField.text.isNullOrBlank()) {
-            missingFields.add("Nombre de usuario")
-        }
-        if (roomDefaultField.text.isNullOrBlank()) {
-            missingFields.add("Sala por defecto")
+            serverPathComboBox.promptText = "Campo requerido"
+            serverPathComboBox.styleClass.add("error")
+            allValid = false
         }
 
-        return if (missingFields.isNotEmpty()) {
-            val alert = Alert(Alert.AlertType.ERROR)
-            alert.title = "Campos obligatorios vacíos"
-            alert.headerText = "Faltan campos por rellenar"
-            alert.contentText = "Debe rellenar los siguientes campos:\n- ${missingFields.joinToString("\n- ")}"
-            alert.showAndWait()
-            false
-        } else {
-            true
+        if (nickNameField.text.isNullOrBlank()) {
+            nickNameField.promptText = "Campo requerido"
+            nickNameField.styleClass.add("error")
+            allValid = false
         }
+
+        if (roomDefaultField.text.isNullOrBlank()) {
+            roomDefaultField.promptText = "Campo requerido"
+            roomDefaultField.styleClass.add("error")
+            allValid = false
+        }
+
+        return allValid
     }
+
 }
