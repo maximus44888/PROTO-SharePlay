@@ -1,13 +1,13 @@
 package tfg.proto.shareplay.frontend
 
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
 import java.io.File
 import java.io.FileOutputStream
 import java.net.Socket
+import java.util.*
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
-import java.util.Base64
 import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.scene.control.Label
@@ -67,7 +67,7 @@ class RoomSharePlayController {
         val config = Gadgets.loadConfig()
         val roomName = config?.roomDefault ?: "Desconocida"
         labelTitle.text = "Sala $roomName"
-        val mpvPath = extractAndRunMPV()
+        val mpvPath = getMPVPath()
         val mpv = MPV(mpvPath)
         playerClient = PlayerClient(socket, config?.roomDefault ?: "", config?.nickname ?: "", mpv)
         listRoomInfo.items = roomInfoItems
@@ -119,25 +119,32 @@ class RoomSharePlayController {
     }
 
     /**
-     * Extrae el ejecutable mpv desde los recursos del proyecto y lo escribe en un archivo temporal.
-     * El archivo temporal se elimina al salir de la aplicación.
+     * Verifica si el ejecutable mpv.exe existe en el directorio de ejecución. Si no existe,
+     * lo extrae desde los recursos del proyecto y lo coloca en el directorio de ejecución.
      *
-     * @return Ruta absoluta del archivo temporal que contiene el ejecutable mpv.
-     * @throws IllegalStateException si no se encuentra el recurso mpv.exe.
+     * @return Ruta absoluta del archivo mpv.exe.
+     * @throws IllegalStateException si no se puede extraer el archivo mpv.exe.
      */
-    fun extractAndRunMPV(): String {
-        val mpvResource = this::class.java.getResourceAsStream("/mpv/mpv.exe")
-            ?: throw IllegalStateException("No se encontró mpv.exe en los recursos")
+    fun getMPVPath(): String {
+        val currentDir = File(System.getProperty("user.dir"))
+        val mpvFile = File(currentDir, "mpv.exe")
 
-        val tempFile = File.createTempFile("mpv", ".exe")
-        tempFile.deleteOnExit()
+        if (!mpvFile.exists()) {
+            try {
+                val resourceStream = javaClass.getResourceAsStream("/mpv/mpv.exe")
+                    ?: throw IllegalStateException("No se encontró el recurso mpv.exe en el proyecto.")
 
-        mpvResource.use { input ->
-            FileOutputStream(tempFile).use { output ->
-                input.copyTo(output)
+                resourceStream.use { input ->
+                    FileOutputStream(mpvFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (e: Exception) {
+                throw IllegalStateException("Error al extraer mpv.exe: ${e.message}", e)
             }
         }
-        return tempFile.absolutePath
+
+        return mpvFile.absolutePath
     }
 
     /**
