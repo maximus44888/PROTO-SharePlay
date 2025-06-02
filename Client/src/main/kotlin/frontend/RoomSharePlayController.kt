@@ -119,11 +119,11 @@ class RoomSharePlayController {
     }
 
     /**
-     * Verifica si el ejecutable mpv.exe existe en el directorio de ejecución. Si no existe,
-     * lo extrae desde los recursos del proyecto y lo coloca en el directorio de ejecución.
+     * Devuelve la ruta absoluta del ejecutable mpv.exe. Si el archivo no existe en el
+     * directorio de trabajo actual, lo extrae desde los recursos del proyecto y lo guarda allí.
      *
      * @return Ruta absoluta del archivo mpv.exe.
-     * @throws IllegalStateException si no se puede extraer el archivo mpv.exe.
+     * @throws IllegalStateException si ocurre un error al extraer el archivo desde los recursos.
      */
     fun getMPVPath(): String {
         val currentDir = File(System.getProperty("user.dir"))
