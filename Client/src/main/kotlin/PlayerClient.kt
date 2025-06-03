@@ -18,7 +18,7 @@ class PlayerClient(
     private val nickName: String,
     private val player: Player,
 ) : AutoCloseable {
-    public val clients = mutableListOf<String>()
+    val clients = mutableListOf<String>()
     private val output = ObjectOutputStream(socket.getOutputStream())
     private val input = ObjectInputStream(socket.getInputStream())
     private val playerScope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
@@ -66,8 +66,7 @@ class PlayerClient(
     }
 
     fun loadMedia(mediaPath: String) {
-        val mediaURI = Player.buildURI(mediaPath) ?:
-            throw IllegalArgumentException("Invalid media path: $mediaPath")
+        val mediaURI = Player.buildURI(mediaPath) ?: throw IllegalArgumentException("Invalid media path: $mediaPath")
         playerScope.launch {
             player.loadMedia(mediaURI)
             output.writeObject(NetworkEvent.MediaLoaded(mediaURI))
