@@ -2,10 +2,9 @@ package tfg.proto.shareplay.frontend
 
 import java.io.File
 import java.net.Socket
-import java.net.URI
+import java.util.*
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
-import java.util.Base64
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
@@ -19,7 +18,7 @@ import javafx.stage.Stage
  * Permite configurar la conexión al servidor, seleccionar archivo de video,
  * gestionar configuración guardada y lanzar la conexión a la sala compartida.
  */
-class SharePlayController {
+class MainController {
 
     /** Etiqueta que muestra el título o encabezado principal de la ventana. */
     lateinit var labelTitle: Label
@@ -56,14 +55,14 @@ class SharePlayController {
     fun initialize() {
         serverPathComboBox.isEditable = true
         serverPathComboBox.items.addAll(
-            "https://45.149.118.37:1234",
-            "https://192.168.1.10:5000"
+            "45.149.118.37:1234",
+            "192.168.1.10:5000",
         )
-        val config = Gadgets.loadConfig()
+        val config = Config.load()
         if (config != null) {
-            serverPathComboBox.editor.text = config.dirServer ?: ""
-            nickNameField.text = config.nickname ?: ""
-            roomDefaultField.text = config.roomDefault ?: ""
+            serverPathComboBox.editor.text = config.dirServer
+            nickNameField.text = config.nickname
+            roomDefaultField.text = config.roomDefault
         }
 
         listOf(nickNameField, roomDefaultField).forEach { field ->
@@ -110,7 +109,7 @@ class SharePlayController {
 
         try {
             decodedText = String(Base64.getDecoder().decode(input), Charsets.UTF_8)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             val alert = Alert(Alert.AlertType.ERROR)
             alert.title = "Código erróneo"
             alert.headerText = "No se pudo procesar la configuración"
@@ -138,11 +137,11 @@ class SharePlayController {
     }
 
     /**
-     * Restablece la configuración guardada mediante [Gadgets.resetConfig].
+     * Restablece la configuración guardada mediante [Config.reset].
      * Además, limpia todos los campos del formulario para que queden vacíos.
      */
     fun onResetConfig() {
-        Gadgets.resetConfig()
+        Config.reset()
 
         serverPathComboBox.editor.text = ""
         nickNameField.text = ""
@@ -161,7 +160,7 @@ class SharePlayController {
      * - Intenta crear un socket TCP con la dirección del servidor proporcionado.
      * - Si falla la conexión, muestra una alerta informativa al usuario.
      * - Si la conexión es exitosa:
-     *    - Carga la vista de la sala (roomSharePlay.fxml).
+     *    - Carga la vista de la sala (room.fxml).
      *    - Inicializa el controlador de la sala con el socket y el archivo de video, si ha sido seleccionado.
      *    - Abre la ventana de la sala.
      *    - Cierra la ventana actual.
@@ -171,30 +170,30 @@ class SharePlayController {
     fun onPlaySharePlay() {
         if (!validateRequiredFields()) return
 
-        val config = GadgetConfig(
+        val config = Config(
             dirServer = serverPathComboBox.editor.text,
             nickname = nickNameField.text,
             roomDefault = roomDefaultField.text,
         )
-        Gadgets.saveConfig(config)
+        Config.save(config)
 
         val filePath = filePathField.text
         val socket: Socket
         try {
-            val url = URI(config.dirServer!!)
-            socket = Socket(url.host, url.port)
+            val parts = config.dirServer.split(":")
+            socket = Socket(parts[0], parts[1].toInt())
         } catch (_: Exception) {
-            val alert = Alert(Alert.AlertType.ERROR)
-            alert.title = "Error de conexión"
-            alert.headerText = "No se pudo conectar con el servidor"
-            alert.contentText = "Comprueba que la dirección del servidor sea correcta y que esté en funcionamiento."
-            alert.showAndWait()
+            Alert(Alert.AlertType.ERROR).apply {
+                title = "Error de conexión"
+                headerText = "No se pudo conectar con el servidor"
+                contentText = "Comprueba que la dirección del servidor sea correcta (formato 'host:puerto')"
+            }.showAndWait()
             return
         }
 
-        val loader = FXMLLoader(SharePlayController::class.java.getResource("/frontend/roomSharePlay.fxml"))
+        val loader = FXMLLoader(javaClass.getResource("/frontend/room.fxml"))
         val scene = Scene(loader.load())
-        val controller = loader.getController<RoomSharePlayController>()
+        val controller = loader.getController<RoomController>()
         controller.initData(socket, filePath)
         val stage = Stage()
         stage.scene = scene
