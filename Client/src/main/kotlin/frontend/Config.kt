@@ -1,8 +1,11 @@
 package tfg.proto.shareplay.frontend
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import java.nio.file.Paths
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.encodeToStream
 
 /**
  * Data class que representa la configuración del usuario para SharePlay.
@@ -11,6 +14,7 @@ import java.nio.file.Paths
  * @property nickname El apodo o nombre de usuario.
  * @property roomDefault La sala por defecto para conectarse.
  */
+@Serializable
 data class Config(
     val dirServer: String?,
     val nickname: String?,
@@ -20,9 +24,8 @@ data class Config(
      * Objeto singleton que gestiona la carga, guardado y reseteo
      * de la configuración persistente de SharePlay.
      */
+    @OptIn(ExperimentalSerializationApi::class)
     companion object {
-        /** Instancia del ObjectMapper de Jackson para serialización/deserialización JSON */
-        private val mapper = jacksonObjectMapper()
 
         /** Archivo donde se guarda la configuración en el directorio home del usuario */
         private val file = Paths.get(System.getProperty("user.home"), ".sharePlayData.json").toFile()
@@ -33,14 +36,10 @@ data class Config(
          * @return Un objeto [Config] con la configuración cargada,
          * o `null` si el archivo no existe o hubo un error durante la carga.
          */
-        fun load(): Config? {
-            if (!file.exists()) return null
-            return try {
-                mapper.readValue<Config>(file)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
+        fun load() = try {
+            Json.decodeFromStream<Config>(file.inputStream())
+        } catch (_: Exception) {
+            null
         }
 
         /**
@@ -48,13 +47,9 @@ data class Config(
          *
          * @param config La configuración a guardar.
          */
-        fun save(config: Config) {
-            try {
-                file.parentFile?.mkdirs()
-                mapper.writeValue(file, config)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+        fun save(config: Config) = try {
+            Json.encodeToStream(config, file.outputStream())
+        } catch (_: Exception) {
         }
 
         /**
