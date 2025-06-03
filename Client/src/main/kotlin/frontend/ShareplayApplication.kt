@@ -1,9 +1,8 @@
 package tfg.proto.shareplay.frontend
 
 import javafx.application.Application
-import javafx.fxml.FXMLLoader
-import javafx.scene.Scene
 import javafx.stage.Stage
+import tfg.proto.shareplay.JavaFX
 
 /**
  * Clase principal de la aplicación SharePlay que extiende de [Application].
@@ -18,12 +17,10 @@ class ShareplayApplication : Application() {
      * @param stage La ventana principal proporcionada por JavaFX.
      */
     override fun start(stage: Stage) {
-        val fxmlLoader = FXMLLoader(javaClass.getResource("/frontend/main.fxml"))
-        val scene = Scene(fxmlLoader.load(), 700.0, 350.0)
-
-        stage.title = "SharePlay"
-        stage.scene = scene
-        stage.isResizable = false
-        stage.show()
+        JavaFX.buildWindow(javaClass.getResource("/frontend/main.fxml"), stage)
+            .apply {
+                title = "SharePlay"
+                isResizable = false
+            }.show()
     }
 }
