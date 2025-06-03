@@ -18,7 +18,8 @@ class PlayerClient(
     private val nickName: String,
     private val player: Player,
 ) : AutoCloseable {
-    val clients = mutableListOf<String>()
+    val _clients = mutableListOf<String>()
+    val clients get() = _clients.toList()
     private val output = ObjectOutputStream(socket.getOutputStream())
     private val input = ObjectInputStream(socket.getInputStream())
     private val playerScope = CoroutineScope(Dispatchers.IO) + SupervisorJob()
@@ -51,8 +52,8 @@ class PlayerClient(
                             when (event) {
                                 is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
                                 is NetworkEvent.Seek -> player.seek(event.time)
-                                is NetworkEvent.NewClient -> clients.add(event.nickName)
-                                is NetworkEvent.ClientLeft -> clients.remove(event.nickName)
+                                is NetworkEvent.NewClient -> _clients.add(event.nickName)
+                                is NetworkEvent.ClientLeft -> _clients.remove(event.nickName)
                             }
                         }
                     }
