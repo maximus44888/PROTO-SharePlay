@@ -37,9 +37,6 @@ class RoomController {
     /** ListView que muestra la lista de integrantes de la sala. */
     lateinit var listRoomInfo: ListView<String>
 
-    /** Socket de conexión con el servidor. */
-    lateinit var socket: Socket
-
     /** Cliente que gestiona la comunicación y reproducción en la sala. */
     private var playerClient: PlayerClient? = null
 
@@ -63,7 +60,6 @@ class RoomController {
      * @param filePath Ruta del archivo de video a reproducir. Si está vacío, no se carga ningún archivo.
      */
     fun initData(socket: Socket, filePath: String) {
-        this.socket = socket
         val config = Config.load()
         val roomName = config?.roomDefault ?: "Desconocida"
         labelTitle.text = "Sala $roomName"
