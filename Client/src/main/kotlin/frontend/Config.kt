@@ -16,9 +16,9 @@ import kotlinx.serialization.json.encodeToStream
  */
 @Serializable
 data class Config(
-    val dirServer: String?,
-    val nickname: String?,
-    val roomDefault: String?
+    val dirServer: String = "",
+    val nickname: String = "",
+    val roomDefault: String = ""
 ) {
     /**
      * Objeto singleton que gestiona la carga, guardado y reseteo

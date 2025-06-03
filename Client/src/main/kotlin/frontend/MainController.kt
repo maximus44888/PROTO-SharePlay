@@ -61,9 +61,9 @@ class MainController {
         )
         val config = Config.load()
         if (config != null) {
-            serverPathComboBox.editor.text = config.dirServer ?: ""
-            nickNameField.text = config.nickname ?: ""
-            roomDefaultField.text = config.roomDefault ?: ""
+            serverPathComboBox.editor.text = config.dirServer
+            nickNameField.text = config.nickname
+            roomDefaultField.text = config.roomDefault
         }
 
         listOf(nickNameField, roomDefaultField).forEach { field ->
@@ -181,7 +181,7 @@ class MainController {
         val filePath = filePathField.text
         val socket: Socket
         try {
-            val url = URI(config.dirServer!!)
+            val url = URI(config.dirServer)
             socket = Socket(url.host, url.port)
         } catch (_: Exception) {
             val alert = Alert(Alert.AlertType.ERROR)
