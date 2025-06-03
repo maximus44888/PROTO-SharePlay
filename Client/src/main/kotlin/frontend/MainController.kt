@@ -3,8 +3,6 @@ package tfg.proto.shareplay.frontend
 import java.io.File
 import java.net.Socket
 import java.util.*
-import javafx.fxml.FXMLLoader
-import javafx.scene.Scene
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.ComboBox
@@ -12,6 +10,7 @@ import javafx.scene.control.Label
 import javafx.scene.control.TextField
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import tfg.proto.shareplay.JavaFX
 
 /**
  * Controlador para la ventana principal de SharePlay.
@@ -191,15 +190,12 @@ class MainController {
             return
         }
 
-        val loader = FXMLLoader(javaClass.getResource("/frontend/room.fxml"))
-        val scene = Scene(loader.load())
-        val controller = loader.getController<RoomController>()
-        controller.initData(socket, filePath)
-        val stage = Stage()
-        stage.scene = scene
-        stage.isResizable = false
-        stage.title = "SharePlay"
-        stage.show()
+        JavaFX.buildWindow(javaClass.getResource("/frontend/room.fxml")) {
+            RoomController(socket, filePath, config.roomDefault, config.nickname)
+        }.apply {
+            title = "SharePlay"
+            isResizable = false
+        }.show()
 
         (onBrowserFile.scene.window as Stage).close()
     }
