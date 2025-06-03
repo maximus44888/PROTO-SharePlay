@@ -27,7 +27,7 @@ class RoomController(
     socket: Socket,
     filePath: String,
     val room: String,
-    nickname: String,
+    val nickname: String,
 ) {
     private val playerClient: PlayerClient
 
@@ -44,6 +44,7 @@ class RoomController(
             while (true) {
                 Platform.runLater {
                     roomInfoItems.setAll(playerClient.clients)
+                    roomInfoItems.addFirst("$nickname (Tú)")
                 }
                 Thread.sleep(100)
             }
