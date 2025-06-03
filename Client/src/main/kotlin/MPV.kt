@@ -71,7 +71,8 @@ class MPV(
             mpvPath,
             "--input-ipc-server=$pipePath",
             "--force-window",
-            "--idle"
+            "--idle",
+            "--script-opts=ytdl_hook-ytdl_path=yt-dlp.exe",
         ).redirectError(ProcessBuilder.Redirect.DISCARD)
             .redirectOutput(ProcessBuilder.Redirect.DISCARD)
             .start()

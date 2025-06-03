@@ -111,6 +111,7 @@ class RoomController(
     fun getMPVPath(): String {
         val currentDir = File(System.getProperty("user.dir"))
         val mpvFile = File(currentDir, "mpv.exe")
+        val ytDlpFile = File(currentDir, "yt-dlp.exe")
 
         if (!mpvFile.exists()) {
             try {
@@ -124,6 +125,21 @@ class RoomController(
                 }
             } catch (e: Exception) {
                 throw IllegalStateException("Error al extraer mpv.exe: ${e.message}", e)
+            }
+        }
+
+        if (!ytDlpFile.exists()) {
+            try {
+                val resourceStream = javaClass.getResourceAsStream("/mpv/yt-dlp.exe")
+                    ?: throw IllegalStateException("No se encontró el recurso yt-dlp.exe en el proyecto.")
+
+                resourceStream.use { input ->
+                    FileOutputStream(ytDlpFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (e: Exception) {
+                throw IllegalStateException("Error al extraer yt-dlp.exe: ${e.message}", e)
             }
         }
 
