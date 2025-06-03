@@ -23,7 +23,7 @@ import tfg.proto.shareplay.PlayerClient
  * Gestiona la interfaz de usuario relacionada con la sala, muestra la lista de integrantes,
  * controla la copia de configuración y permite cerrar la sala.
  */
-class RoomSharePlayController {
+class RoomController {
 
     /** Etiqueta que muestra el título de la sala actual. */
     lateinit var labelTitle: Label
@@ -64,7 +64,7 @@ class RoomSharePlayController {
      */
     fun initData(socket: Socket, filePath: String) {
         this.socket = socket
-        val config = Gadgets.loadConfig()
+        val config = Config.load()
         val roomName = config?.roomDefault ?: "Desconocida"
         labelTitle.text = "Sala $roomName"
         val mpvPath = getMPVPath()
@@ -85,7 +85,7 @@ class RoomSharePlayController {
      * Si no existe configuración, no realiza ninguna acción.
      */
     fun onCopyConfig() {
-        val config = Gadgets.loadConfig()
+        val config = Config.load()
         if (config != null) {
             val plainText = "${config.dirServer}|${config.roomDefault}"
             val encodedText = Base64.getEncoder().encodeToString(plainText.toByteArray(Charsets.UTF_8))
@@ -102,7 +102,7 @@ class RoomSharePlayController {
      * Además, libera los recursos del cliente de la sala cerrando la conexión.
      */
     fun onClose() {
-        val loader = FXMLLoader(javaClass.getResource("/frontend/sharePlay.fxml"))
+        val loader = FXMLLoader(javaClass.getResource("/frontend/main.fxml"))
         val root: Parent = loader.load()
         val stage = Stage()
         stage.title = "SharePlay"
