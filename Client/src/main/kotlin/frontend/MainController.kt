@@ -2,7 +2,6 @@ package tfg.proto.shareplay.frontend
 
 import java.io.File
 import java.net.Socket
-import java.net.URI
 import java.util.*
 import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
@@ -56,8 +55,8 @@ class MainController {
     fun initialize() {
         serverPathComboBox.isEditable = true
         serverPathComboBox.items.addAll(
-            "https://45.149.118.37:1234",
-            "https://192.168.1.10:5000"
+            "45.149.118.37:1234",
+            "192.168.1.10:5000",
         )
         val config = Config.load()
         if (config != null) {
@@ -181,14 +180,14 @@ class MainController {
         val filePath = filePathField.text
         val socket: Socket
         try {
-            val url = URI(config.dirServer)
-            socket = Socket(url.host, url.port)
+            val parts = config.dirServer.split(":")
+            socket = Socket(parts[0], parts[1].toInt())
         } catch (_: Exception) {
-            val alert = Alert(Alert.AlertType.ERROR)
-            alert.title = "Error de conexión"
-            alert.headerText = "No se pudo conectar con el servidor"
-            alert.contentText = "Comprueba que la dirección del servidor sea correcta y que esté en funcionamiento."
-            alert.showAndWait()
+            Alert(Alert.AlertType.ERROR).apply {
+                title = "Error de conexión"
+                headerText = "No se pudo conectar con el servidor"
+                contentText = "Comprueba que la dirección del servidor sea correcta (formato 'host:puerto')"
+            }.showAndWait()
             return
         }
 
