@@ -149,12 +149,18 @@ class RoomController {
      */
 
     private fun startRoomInfoUpdater() {
+        val config = Config.load()
+        val nickname = config?.nickname
         val thread = Thread {
             while (playerClient != null) {
                 val clientsList = playerClient?.clients ?: emptyList()
 
+                val newItems = mutableListOf<String>()
+                newItems.add("$nickname (Tú)")
+                newItems.addAll(clientsList)
+
                 javafx.application.Platform.runLater {
-                    roomInfoItems.setAll(clientsList)
+                    roomInfoItems.setAll(newItems)
                 }
 
                 Thread.sleep(100)
