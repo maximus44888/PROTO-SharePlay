@@ -1,6 +1,7 @@
 package tfg.proto.shareplay
 
 import java.io.File
+import java.io.IOException
 import java.io.PrintWriter
 import java.lang.Thread.sleep
 import java.net.Socket
@@ -95,12 +96,19 @@ class MPV(
         incoming = flow {
             pipeSocket.inputStream.bufferedReader().use {
                 while (true) {
-                    val responseLine = withContext(Dispatchers.IO) { it.readLine() }
-                    val responseJson = Json.parseToJsonElement(responseLine).jsonObject
-                    responseJson["request_id"]?.jsonPrimitive?.intOrNull?.let { requestId ->
-                        pending[requestId]?.complete(responseJson)
-                        pending.remove(requestId)
-                    } ?: emit(responseJson)
+                    try {
+                        val responseLine = withContext(Dispatchers.IO) { it.readLine() }
+                        if (responseLine == null) break
+                        val responseJson = Json.parseToJsonElement(responseLine).jsonObject
+                        responseJson["request_id"]?.jsonPrimitive?.intOrNull?.let { requestId ->
+                            pending[requestId]?.complete(responseJson)
+                            pending.remove(requestId)
+                        } ?: emit(responseJson)
+                    } catch (_: IOException) {
+                        break
+                    } catch (_: Exception) {
+                        continue
+                    }
                 }
             }
         }.shareIn(scope, SharingStarted.Eagerly, 0)
