@@ -13,7 +13,6 @@ import javafx.scene.control.ListView
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
 import javafx.stage.Stage
-import tfg.proto.shareplay.JavaFX
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
 import kotlin.concurrent.thread

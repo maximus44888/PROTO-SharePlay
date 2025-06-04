@@ -10,7 +10,6 @@ import javafx.scene.control.Label
 import javafx.scene.control.TextField
 import javafx.stage.FileChooser
 import javafx.stage.Stage
-import tfg.proto.shareplay.JavaFX
 
 /**
  * Controlador para la ventana principal de SharePlay.

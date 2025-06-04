@@ -1,4 +1,4 @@
-package tfg.proto.shareplay
+package tfg.proto.shareplay.frontend
 
 import java.net.URL
 import javafx.fxml.FXMLLoader

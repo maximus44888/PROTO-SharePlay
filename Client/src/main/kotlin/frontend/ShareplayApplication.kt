@@ -2,7 +2,6 @@ package tfg.proto.shareplay.frontend
 
 import javafx.application.Application
 import javafx.stage.Stage
-import tfg.proto.shareplay.JavaFX
 
 /**
  * Clase principal de la aplicación SharePlay que extiende de [Application].
