@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlin.coroutines.cancellation.CancellationException
@@ -47,15 +48,20 @@ class PlayerClient(
                 }
 
                 launch(Dispatchers.IO) {
-                    while (true) {
-                        input.readObject().let { event ->
-                            when (event) {
-                                is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
-                                is NetworkEvent.Seek -> player.seek(event.time)
-                                is NetworkEvent.NewClient -> _clients.add(event.nickName)
-                                is NetworkEvent.ClientLeft -> _clients.remove(event.nickName)
+                    try {
+                        while (true) {
+                            input.readObject().let { event ->
+                                when (event) {
+                                    is NetworkEvent.Pause -> if (event.paused) player.pause() else player.resume()
+                                    is NetworkEvent.Seek -> player.seek(event.time)
+                                    is NetworkEvent.NewClient -> _clients.add(event.nickName)
+                                    is NetworkEvent.ClientLeft -> _clients.remove(event.nickName)
+                                }
                             }
                         }
+                    } catch (e: Exception) {
+                        if (!playerScope.isActive) return@launch
+                        println("Error reading from socket: ${e.message}")
                     }
                 }
             }
@@ -76,10 +82,27 @@ class PlayerClient(
     }
 
     override fun close() {
-        playerScope.cancel(CancellationException("PlayerClient closed"))
-        player.close()
-        output.close()
-        input.close()
-        socket.close()
+        try {
+            playerScope.cancel(CancellationException("PlayerClient closed"))
+
+            try {
+                input.close()
+            } catch (_: Exception) {
+            }
+
+            try {
+                output.close()
+            } catch (_: Exception) {
+            }
+
+            try {
+                socket.close()
+            } catch (_: Exception) {
+            }
+
+            player.close()
+        } catch (e: Exception) {
+            println("Error during PlayerClient shutdown: ${e.message}")
+        }
     }
 }
