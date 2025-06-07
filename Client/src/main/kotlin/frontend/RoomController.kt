@@ -12,6 +12,7 @@ import javafx.scene.control.Label
 import javafx.scene.control.ListView
 import javafx.scene.input.Clipboard
 import javafx.scene.input.ClipboardContent
+import javafx.scene.layout.Pane
 import javafx.stage.Stage
 import tfg.proto.shareplay.MPV
 import tfg.proto.shareplay.PlayerClient
@@ -65,6 +66,10 @@ class RoomController(
     fun initialize() {
         labelTitle.text = "Sala $room"
         listRoomInfo.items = roomInfoItems
+        Platform.runLater {
+            val pane = labelTitle.parent as Pane
+            labelTitle.layoutX = (pane.width - labelTitle.width) / 2
+        }
     }
 
     /**
