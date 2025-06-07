@@ -39,3 +39,7 @@ build/
 
 ### Packaging temp files ###
 dependency-reduced-pom.xml
+
+### MPV and YT-DLP excutable files ###
+/mpv.exe
+/yt-dlp.exe
